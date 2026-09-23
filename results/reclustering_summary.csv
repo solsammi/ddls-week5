@@ -1,0 +1,5 @@
+resolution,n_reclustered,same_label_fraction_unadjusted,mean_recluster_cluster_purity
+0.3,6,,0.9459799078805187
+0.5,7,,0.9812078086067323
+0.8,10,,0.9669066956755801
+1.0,10,,0.9591053742745267

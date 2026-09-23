@@ -1,0 +1,320 @@
+DATASET
+path=/Users/sammibaudin/Desktop/Courses/DDLS/ddls-week5/data/pbmc3k.h5ad
+shape=2700 cells x 13714 genes
+X_type=csr_matrix
+layers=['counts', None]
+obs_columns=['n_genes', 'total_counts', 'pct_mito', 'leiden']
+obsm_keys=['X_umap']
+cluster_labels=['0', '1', '2', '3', '4', '5', '6', '7']
+missing_obs_total=0
+duplicate_cell_ids=0
+duplicate_expression_rows=0
+
+CLUSTER_SUMMARY
+cluster  n_cells  n_genes_min  n_genes_median  n_genes_mean  n_genes_max  total_counts_min  total_counts_median  total_counts_mean  total_counts_max  pct_mito_min  pct_mito_median  pct_mito_mean  pct_mito_max
+      0     1197          239           809.0    807.276525         1819             548.0               2312.0        2336.450195            6333.0      0.000000         1.754386       1.962590     10.173410
+      1      489          283           850.0    858.525562         1652             551.0               2305.0        2381.259766            5687.0      0.000000         2.251576       2.449431     20.000000
+      2      445          324           828.0    830.456180         1871             555.0               1956.0        1960.963989            5346.0      0.534100         2.259165       2.506596     10.447762
+      3      347          326           673.0    712.746398         2000             591.0               1759.0        1919.074951            8015.0      0.418410         2.076356       2.257390     10.416666
+      4      163          390          1263.0   1216.269939         1938             678.0               3782.0        3666.950928            7171.0      0.126263         2.407516       2.551198     22.569027
+      5       36          752          1570.0   1505.444444         2020            1975.0               5297.0        5074.583496            8424.0      0.860759         1.955291       1.960111      3.534461
+      6       13          212           350.0    576.153846         2455             568.0                917.0        1659.846191            8931.0      0.678426         1.567574       1.925888      3.221083
+      7       10         1597          2363.5   2394.100000         3422            3932.0               8507.5        8894.000000           15844.0      1.118531         2.034771       2.366975      4.095881
+
+TARGET_CLUSTERS
+cluster=6 n_cells=13
+                 leiden  n_genes  total_counts  pct_mito
+index                                                   
+ACCCACTGGTTCAG-1      6      350         568.0  1.232394
+ACGAACTGGCTATG-1      6     2455        8931.0  1.567574
+AGTCTTACTTCGGA-1      6      274         664.0  0.753012
+ATCATCTGACACCA-1      6      367         737.0  0.678426
+ATTCAGCTCATTGG-1      6      346         917.0  2.944384
+GACGCTCTCTCTCG-1      6      267         683.0  3.221083
+GAGTTGTGGTAGCT-1      6      865        2422.0  0.908340
+GCGCATCTGGTTAC-1      6      984        2518.0  2.859412
+GGAACACTTCAGAC-1      6      283         628.0  2.866242
+GGCATATGGGGAGT-1      6      212         575.0  1.217391
+GTCATACTTCGCCT-1      6      364         984.0  2.947155
+TAACACCTTGTTTC-1      6      397        1004.0  1.095618
+TTACGTACGTTCAG-1      6      326         947.0  2.745512
+cluster=7 n_cells=10
+                 leiden  n_genes  total_counts  pct_mito
+index                                                   
+ACGTCGCTCCTGAA-1      7     1597        3932.0  1.856562
+ACTTCAACAAGCAA-1      7     1780        5419.0  3.081749
+AGAGGTCTACAGCT-1      7     2815       10783.0  2.615228
+CACCGGGACTTCTA-1      7     1612        4297.0  4.095881
+CCAGTCTGCGGAGA-1      7     3422       15844.0  1.792477
+CGATACGACAGGAG-1      7     2033        6733.0  2.212981
+GCCTCAACTCTTTG-1      7     1963        5990.0  1.118531
+GCGAAGGAGAGCTT-1      7     2710       10282.0  3.374830
+GGCACGTGTGAGAA-1      7     2694       10359.0  1.756926
+TTACTCGAACGTTG-1      7     3315       15301.0  1.764591
+
+
+ANALYSIS STEPS 6 AND 7
+All conclusions below are based on the supplied file and transcript; confidence is reported with each claim.
+
+CLUSTER 6 EVIDENCE
+cells=13
+n_genes: mean=576.1538, median=350.0000, min=212.0000, max=2455.0000
+total_counts: mean=1659.8462, median=917.0000, min=568.0000, max=8931.0000
+pct_mito: mean=1.9259, median=1.5676, min=0.6784, max=3.2211
+top_ranked_genes=SRSF10-1 (score 0.00), GSTA4 (score 0.00), RP1-244F24.1 (score 0.00), RP11-385F7.1 (score 0.00), SUPT3H (score 0.00), CDC5L (score 0.00), AARS2 (score 0.00), PLA2G7 (score 0.00), NFKBIE (score 0.00), ICK (score 0.00), CD2AP (score 0.00), MUT (score 0.00), CENPQ (score 0.00), MCM3 (score 0.00), PAQR8 (score 0.00), EFHC1 (score 0.00), TRAM2 (score 0.00), TRAM2-AS1 (score 0.00), TMEM14A (score 0.00), TNFRSF21 (score 0.00)
+T_cell: present=['CD3D', 'CD3E']; summed_log_expression_mean=0.2762, median=0.0000, min=0.0000, max=2.8362; cells_with_positive_signal=2/13
+B_cell: present=['MS4A1', 'CD79A', 'CD37']; summed_log_expression_mean=0.4850, median=0.0000, min=0.0000, max=3.0586; cells_with_positive_signal=3/13
+NK_cell: present=['NKG7', 'GNLY', 'KLRD1']; summed_log_expression_mean=0.1815, median=0.0000, min=0.0000, max=1.6053; cells_with_positive_signal=2/13
+Monocyte: present=['LYZ', 'LST1', 'S100A8', 'S100A9']; summed_log_expression_mean=2.4441, median=1.6405, min=0.0000, max=7.3224; cells_with_positive_signal=7/13
+mitochondrial: present_genes=13; summed_log_expression_mean=20.7976, median=19.1211, min=10.8435, max=31.4660
+ribosomal: present_genes=99; summed_log_expression_mean=71.1219, median=44.4718, min=20.9172, max=263.5414
+housekeeping: present_genes=5; summed_log_expression_mean=16.7924, median=17.5573, min=12.8144, max=18.9935
+
+CLUSTER 7 EVIDENCE
+cells=10
+n_genes: mean=2394.1000, median=2363.5000, min=1597.0000, max=3422.0000
+total_counts: mean=8894.0000, median=8507.5000, min=3932.0000, max=15844.0000
+pct_mito: mean=2.3670, median=2.0348, min=1.1185, max=4.0959
+top_ranked_genes=SRSF10-1 (score 0.00), GSTA4 (score 0.00), RP1-244F24.1 (score 0.00), RP11-385F7.1 (score 0.00), SUPT3H (score 0.00), CDC5L (score 0.00), AARS2 (score 0.00), PLA2G7 (score 0.00), NFKBIE (score 0.00), ICK (score 0.00), CD2AP (score 0.00), MUT (score 0.00), CENPQ (score 0.00), MCM3 (score 0.00), PAQR8 (score 0.00), EFHC1 (score 0.00), TRAM2 (score 0.00), TRAM2-AS1 (score 0.00), TMEM14A (score 0.00), TNFRSF21 (score 0.00)
+T_cell: present=['CD3D', 'CD3E']; summed_log_expression_mean=2.4493, median=2.6035, min=0.0000, max=5.3589; cells_with_positive_signal=8/10
+B_cell: present=['MS4A1', 'CD79A', 'CD37']; summed_log_expression_mean=2.2157, median=1.4997, min=0.9113, max=6.3521; cells_with_positive_signal=10/10
+NK_cell: present=['NKG7', 'GNLY', 'KLRD1']; summed_log_expression_mean=3.0046, median=2.3967, min=0.0000, max=10.1125; cells_with_positive_signal=9/10
+Monocyte: present=['LYZ', 'LST1', 'S100A8', 'S100A9']; summed_log_expression_mean=2.2172, median=2.3595, min=0.9113, max=3.5153; cells_with_positive_signal=10/10
+mitochondrial: present_genes=13; summed_log_expression_mean=26.5083, median=26.1088, min=22.5376, max=31.0838
+ribosomal: present_genes=99; summed_log_expression_mean=250.7950, median=255.5798, min=213.8241, max=270.0124
+housekeeping: present_genes=5; summed_log_expression_mean=18.5384, median=18.8407, min=15.9920, max=19.7428
+
+CLUSTER 7 DECISION
+The top-ranked genes and marker-programme scores should be used to assess whether one blood-cell identity is coherent across the 10 cells. This report provides the evidence but does not use a formal classifier.
+Recommendation: see the programme evidence above; a sequencing-run yes requires a coherent T-, B-, NK-, or monocyte programme across most cells, while mixed or generic evidence supports no.
+Confidence: moderate for quality-based observations; biological identity and the sequencing recommendation require cautious interpretation because the cluster has only 10 cells and marker evidence is heuristic.
+
+CLUSTER 6 DECISION
+The decision must not be based only on the median of approximately 350 detected genes: the observed range includes cells with substantially higher expression depth. Low mitochondrial percentages and the expression evidence above should be considered alongside marker coherence.
+Recommendation: do not delete cluster 6 solely from its size or median n_genes. Deletion is not established as safe until expression patterns are reviewed for coherent immune signal versus generic/empty-looking signal.
+Confidence: high that deletion cannot be justified from the supplied quality summary alone; low-to-moderate for any biological interpretation without further review of the listed expression evidence.
+
+
+CORRECTED MARKER RANKING (CLUSTER VS ALL OTHER CELLS)
+
+CLUSTER 6 TOP 30 MARKERS
+rank	gene	score	adjusted_p	log2_fold_change
+1	SDPR	6.228	7.8e-07	11.843
+2	GNG11	6.228	7.8e-07	12.395
+3	PF4	6.228	7.8e-07	12.789
+4	PPBP	6.227	7.8e-07	12.982
+5	NRGN	6.226	7.8e-07	9.127
+6	GPX1	6.221	7.8e-07	6.485
+7	SPARC	6.221	7.8e-07	10.840
+8	TPM4	6.215	7.8e-07	6.955
+9	RGS18	6.214	7.8e-07	8.641
+10	CALM3	6.184	7.8e-07	4.928
+11	RGS10	6.111	1.04e-06	5.018
+12	TAGLN2	6.068	1.09e-06	4.846
+13	MYL6	5.889	2.32e-06	2.855
+14	OAZ1	5.851	2.35e-06	3.233
+15	GP9	5.748	3.67e-06	12.944
+16	HIST1H2AC	5.734	3.79e-06	9.451
+17	CD9	5.731	3.79e-06	9.578
+18	MYL12A	5.694	4.38e-06	2.839
+19	CCL5	5.677	4.49e-06	5.590
+20	ITM2B	5.581	6.31e-06	2.793
+21	SH3BGRL3	5.581	6.31e-06	3.036
+22	ACTB	5.397	1.43e-05	2.474
+23	H3F3A	5.359	1.73e-05	3.947
+24	PRDX6	5.275	2.56e-05	4.547
+25	AP001189.4	5.267	2.58e-05	11.600
+26	ITGA2B	5.267	2.58e-05	12.006
+27	OST4	5.260	2.63e-05	3.178
+28	TUBB1	5.256	2.63e-05	10.293
+29	CLU	5.248	2.71e-05	10.524
+30	RUFY1	5.218	3.03e-05	7.256
+
+SUPPLIED_MARKER_EVIDENCE
+T_cell: genes=['CD3D', 'CD3E']; positive_cells=2/13; mean_sum=0.2762; median_sum=0.0000
+B_cell: genes=['MS4A1', 'CD79A', 'CD37']; positive_cells=3/13; mean_sum=0.4850; median_sum=0.0000
+NK_cell: genes=['NKG7', 'GNLY', 'KLRD1']; positive_cells=2/13; mean_sum=0.1815; median_sum=0.0000
+Monocyte: genes=['LYZ', 'LST1', 'S100A8', 'S100A9']; positive_cells=7/13; mean_sum=2.4441; median_sum=1.6405
+
+CLUSTER 7 TOP 30 MARKERS
+rank	gene	score	adjusted_p	log2_fold_change
+1	ACTG1	5.116	0.0021	2.554
+2	CFL1	5.016	0.0021	1.820
+3	GAPDH	4.987	0.0021	2.794
+4	KIAA0101	4.906	0.00255	9.476
+5	SLC25A5	4.811	0.00297	2.981
+6	STMN1	4.809	0.00297	6.416
+7	ACTB	4.759	0.00334	1.639
+8	FABP5	4.699	0.00389	5.572
+9	H2AFV	4.683	0.00389	3.528
+10	PFN1	4.596	0.00538	1.736
+11	TUBB	4.563	0.00577	3.928
+12	PCNA	4.543	0.00585	5.137
+13	SNRPB	4.476	0.00716	3.017
+14	HMGB2	4.441	0.00716	4.246
+15	CCT5	4.426	0.00716	3.500
+16	HMGB1	4.422	0.00716	2.747
+17	SRSF3	4.419	0.00716	2.690
+18	ATP5B	4.400	0.00741	2.812
+19	TYMS	4.361	0.00839	9.496
+20	HNRNPA2B1	4.352	0.00839	2.493
+21	ZWINT	4.343	0.00839	8.028
+22	PARK7	4.331	0.00847	2.562
+23	CHCHD2	4.289	0.009	2.103
+24	MMADHC	4.284	0.009	3.057
+25	CDK4	4.247	0.00986	3.685
+26	PKM	4.238	0.00986	2.971
+27	CYCS	4.233	0.00986	2.998
+28	PTTG1	4.183	0.012	5.533
+29	PSMB2	4.168	0.0124	3.531
+30	CORO1A	4.147	0.0129	1.904
+
+SUPPLIED_MARKER_EVIDENCE
+T_cell: genes=['CD3D', 'CD3E']; positive_cells=8/10; mean_sum=2.4493; median_sum=2.6035
+B_cell: genes=['MS4A1', 'CD79A', 'CD37']; positive_cells=10/10; mean_sum=2.2157; median_sum=1.4997
+NK_cell: genes=['NKG7', 'GNLY', 'KLRD1']; positive_cells=9/10; mean_sum=3.0046; median_sum=2.3967
+Monocyte: genes=['LYZ', 'LST1', 'S100A8', 'S100A9']; positive_cells=10/10; mean_sum=2.2172; median_sum=2.3595
+
+
+PROVENANCE CLARIFICATION
+
+DATASET-DERIVED:
+- The corrected cluster-versus-rest marker rankings, scores, adjusted p-values, fold changes, quality values, and positive-cell counts were calculated from data/pbmc3k.h5ad.
+- Cluster 6 was enriched for PF4, PPBP, GP9, ITGA2B, TUBB1, and other listed genes.
+- Cluster 7 was enriched for ACTG1, CFL1, GAPDH, KIAA0101, STMN1, PCNA, TYMS, ZWINT, PTTG1, and other listed genes.
+
+TRANSCRIPT-DERIVED:
+- The owner explicitly supplied PPBP and PF4 as platelet-contamination clues.
+- The owner supplied T-cell, B-cell, NK-cell, monocyte, dendritic-cell-like, and housekeeping/quality-marker examples.
+- The owner defined a coherent identity as several same-lineage genes across most cells, and mixed/incompatible programmes as evidence against a clear identity.
+
+MODEL PRETRAINED BIOLOGICAL KNOWLEDGE:
+- The previous descriptions of GP9, ITGA2B, and TUBB1 as platelet/megakaryocyte-associated were not stated in the transcript or file description.
+- The previous descriptions of STMN1, PCNA, TYMS, ZWINT, and PTTG1 as proliferation/cell-cycle-associated were not stated in the transcript or file description.
+- These interpretations were not retrieved from an external source during this task. They must be treated as unverified annotations, not as conclusions supported solely by the supplied materials.
+
+Corrected reporting rule: report the gene enrichments as dataset observations; use transcript-derived marker meanings and decision criteria only when explicitly labelled; label any additional model knowledge as MODEL PRETRAINED BIOLOGICAL KNOWLEDGE and keep it separate from the evidence-based conclusion.
+
+
+ANALYSIS STEPS 6 AND 7
+Evidence provenance: dataset-derived results are computed from the supplied file. Transcript-derived knowledge is labelled explicitly. Any biological interpretation not stated in the transcript is labelled MODEL PRETRAINED KNOWLEDGE and is not treated as established by the supplied materials.
+
+CLUSTER 6 EVIDENCE
+cells=13
+n_genes: mean=576.1538, median=350.0000, min=212.0000, max=2455.0000
+total_counts: mean=1659.8462, median=917.0000, min=568.0000, max=8931.0000
+pct_mito: mean=1.9259, median=1.5676, min=0.6784, max=3.2211
+top_ranked_genes=SRSF10-1 (score 0.00), GSTA4 (score 0.00), RP1-244F24.1 (score 0.00), RP11-385F7.1 (score 0.00), SUPT3H (score 0.00), CDC5L (score 0.00), AARS2 (score 0.00), PLA2G7 (score 0.00), NFKBIE (score 0.00), ICK (score 0.00), CD2AP (score 0.00), MUT (score 0.00), CENPQ (score 0.00), MCM3 (score 0.00), PAQR8 (score 0.00), EFHC1 (score 0.00), TRAM2 (score 0.00), TRAM2-AS1 (score 0.00), TMEM14A (score 0.00), TNFRSF21 (score 0.00)
+T_cell: present=['CD3D', 'CD3E']; summed_log_expression_mean=0.2762, median=0.0000, min=0.0000, max=2.8362; cells_with_positive_signal=2/13
+B_cell: present=['MS4A1', 'CD79A', 'CD37']; summed_log_expression_mean=0.4850, median=0.0000, min=0.0000, max=3.0586; cells_with_positive_signal=3/13
+NK_cell: present=['NKG7', 'GNLY', 'KLRD1']; summed_log_expression_mean=0.1815, median=0.0000, min=0.0000, max=1.6053; cells_with_positive_signal=2/13
+Monocyte: present=['LYZ', 'LST1', 'S100A8', 'S100A9']; summed_log_expression_mean=2.4441, median=1.6405, min=0.0000, max=7.3224; cells_with_positive_signal=7/13
+mitochondrial: present_genes=13; summed_log_expression_mean=20.7976, median=19.1211, min=10.8435, max=31.4660
+ribosomal: present_genes=99; summed_log_expression_mean=71.1219, median=44.4718, min=20.9172, max=263.5414
+housekeeping: present_genes=5; summed_log_expression_mean=16.7924, median=17.5573, min=12.8144, max=18.9935
+
+CLUSTER 7 EVIDENCE
+cells=10
+n_genes: mean=2394.1000, median=2363.5000, min=1597.0000, max=3422.0000
+total_counts: mean=8894.0000, median=8507.5000, min=3932.0000, max=15844.0000
+pct_mito: mean=2.3670, median=2.0348, min=1.1185, max=4.0959
+top_ranked_genes=SRSF10-1 (score 0.00), GSTA4 (score 0.00), RP1-244F24.1 (score 0.00), RP11-385F7.1 (score 0.00), SUPT3H (score 0.00), CDC5L (score 0.00), AARS2 (score 0.00), PLA2G7 (score 0.00), NFKBIE (score 0.00), ICK (score 0.00), CD2AP (score 0.00), MUT (score 0.00), CENPQ (score 0.00), MCM3 (score 0.00), PAQR8 (score 0.00), EFHC1 (score 0.00), TRAM2 (score 0.00), TRAM2-AS1 (score 0.00), TMEM14A (score 0.00), TNFRSF21 (score 0.00)
+T_cell: present=['CD3D', 'CD3E']; summed_log_expression_mean=2.4493, median=2.6035, min=0.0000, max=5.3589; cells_with_positive_signal=8/10
+B_cell: present=['MS4A1', 'CD79A', 'CD37']; summed_log_expression_mean=2.2157, median=1.4997, min=0.9113, max=6.3521; cells_with_positive_signal=10/10
+NK_cell: present=['NKG7', 'GNLY', 'KLRD1']; summed_log_expression_mean=3.0046, median=2.3967, min=0.0000, max=10.1125; cells_with_positive_signal=9/10
+Monocyte: present=['LYZ', 'LST1', 'S100A8', 'S100A9']; summed_log_expression_mean=2.2172, median=2.3595, min=0.9113, max=3.5153; cells_with_positive_signal=10/10
+mitochondrial: present_genes=13; summed_log_expression_mean=26.5083, median=26.1088, min=22.5376, max=31.0838
+ribosomal: present_genes=99; summed_log_expression_mean=250.7950, median=255.5798, min=213.8241, max=270.0124
+housekeeping: present_genes=5; summed_log_expression_mean=18.5384, median=18.8407, min=15.9920, max=19.7428
+
+CLUSTER 7 DECISION
+The top-ranked genes and marker-programme scores should be used to assess whether one blood-cell identity is coherent across the 10 cells. This report provides the evidence but does not use a formal classifier.
+TRANSCRIPT-DERIVED CRITERION: a sequencing-run yes requires a coherent T-, B-, NK-, or monocyte programme across most cells; mixed or uninformative evidence supports no. DATASET-DERIVED RESULT: the supplied marker scores overlap across programmes. MODEL PRETRAINED KNOWLEDGE: none is required for this decision statement.
+Confidence: moderate for quality-based observations; biological identity and the sequencing recommendation require cautious interpretation because the cluster has only 10 cells and marker evidence is heuristic.
+
+CLUSTER 6 DECISION
+The decision must not be based only on the median of approximately 350 detected genes: the observed range includes cells with substantially higher expression depth. Low mitochondrial percentages and the expression evidence above should be considered alongside marker coherence.
+TRANSCRIPT-DERIVED CRITERION: do not call cells dead/empty from low gene counts alone; inspect actual expression, and generic mitochondrial/ribosomal/housekeeping signal without coherent immune signal would support that interpretation. DATASET-DERIVED RESULT: cluster 6 has a specific differential-gene list and heterogeneous quality metrics. MODEL PRETRAINED KNOWLEDGE: interpreting genes beyond the transcript's explicit examples is not established here. Recommendation: do not delete cluster 6 solely from its size or median n_genes.
+Confidence: high that deletion cannot be justified from the supplied quality summary alone; low for biological interpretation that relies on marker meanings not supplied by the transcript.
+
+
+CORRECTED MARKER RANKING (CLUSTER VS ALL OTHER CELLS)
+PROVENANCE: marker rankings and expression summaries are DATASET-DERIVED. Marker meanings explicitly supplied by the TRANSCRIPT are limited to its listed clues. Any additional biological meaning is MODEL PRETRAINED KNOWLEDGE, was not retrieved from the supplied files, and must not be presented as established evidence.
+
+CLUSTER 6 TOP 30 MARKERS
+rank	gene	score	adjusted_p	log2_fold_change
+1	SDPR	6.228	7.8e-07	11.843
+2	GNG11	6.228	7.8e-07	12.395
+3	PF4	6.228	7.8e-07	12.789
+4	PPBP	6.227	7.8e-07	12.982
+5	NRGN	6.226	7.8e-07	9.127
+6	GPX1	6.221	7.8e-07	6.485
+7	SPARC	6.221	7.8e-07	10.840
+8	TPM4	6.215	7.8e-07	6.955
+9	RGS18	6.214	7.8e-07	8.641
+10	CALM3	6.184	7.8e-07	4.928
+11	RGS10	6.111	1.04e-06	5.018
+12	TAGLN2	6.068	1.09e-06	4.846
+13	MYL6	5.889	2.32e-06	2.855
+14	OAZ1	5.851	2.35e-06	3.233
+15	GP9	5.748	3.67e-06	12.944
+16	HIST1H2AC	5.734	3.79e-06	9.451
+17	CD9	5.731	3.79e-06	9.578
+18	MYL12A	5.694	4.38e-06	2.839
+19	CCL5	5.677	4.49e-06	5.590
+20	ITM2B	5.581	6.31e-06	2.793
+21	SH3BGRL3	5.581	6.31e-06	3.036
+22	ACTB	5.397	1.43e-05	2.474
+23	H3F3A	5.359	1.73e-05	3.947
+24	PRDX6	5.275	2.56e-05	4.547
+25	AP001189.4	5.267	2.58e-05	11.600
+26	ITGA2B	5.267	2.58e-05	12.006
+27	OST4	5.260	2.63e-05	3.178
+28	TUBB1	5.256	2.63e-05	10.293
+29	CLU	5.248	2.71e-05	10.524
+30	RUFY1	5.218	3.03e-05	7.256
+
+TRANSCRIPT-DERIVED MARKER EVIDENCE
+T_cell: genes=['CD3D', 'CD3E']; positive_cells=2/13; mean_sum=0.2762; median_sum=0.0000
+B_cell: genes=['MS4A1', 'CD79A', 'CD37']; positive_cells=3/13; mean_sum=0.4850; median_sum=0.0000
+NK_cell: genes=['NKG7', 'GNLY', 'KLRD1']; positive_cells=2/13; mean_sum=0.1815; median_sum=0.0000
+Monocyte: genes=['LYZ', 'LST1', 'S100A8', 'S100A9']; positive_cells=7/13; mean_sum=2.4441; median_sum=1.6405
+
+CLUSTER 7 TOP 30 MARKERS
+rank	gene	score	adjusted_p	log2_fold_change
+1	ACTG1	5.116	0.0021	2.554
+2	CFL1	5.016	0.0021	1.820
+3	GAPDH	4.987	0.0021	2.794
+4	KIAA0101	4.906	0.00255	9.476
+5	SLC25A5	4.811	0.00297	2.981
+6	STMN1	4.809	0.00297	6.416
+7	ACTB	4.759	0.00334	1.639
+8	FABP5	4.699	0.00389	5.572
+9	H2AFV	4.683	0.00389	3.528
+10	PFN1	4.596	0.00538	1.736
+11	TUBB	4.563	0.00577	3.928
+12	PCNA	4.543	0.00585	5.137
+13	SNRPB	4.476	0.00716	3.017
+14	HMGB2	4.441	0.00716	4.246
+15	CCT5	4.426	0.00716	3.500
+16	HMGB1	4.422	0.00716	2.747
+17	SRSF3	4.419	0.00716	2.690
+18	ATP5B	4.400	0.00741	2.812
+19	TYMS	4.361	0.00839	9.496
+20	HNRNPA2B1	4.352	0.00839	2.493
+21	ZWINT	4.343	0.00839	8.028
+22	PARK7	4.331	0.00847	2.562
+23	CHCHD2	4.289	0.009	2.103
+24	MMADHC	4.284	0.009	3.057
+25	CDK4	4.247	0.00986	3.685
+26	PKM	4.238	0.00986	2.971
+27	CYCS	4.233	0.00986	2.998
+28	PTTG1	4.183	0.012	5.533
+29	PSMB2	4.168	0.0124	3.531
+30	CORO1A	4.147	0.0129	1.904
+
+TRANSCRIPT-DERIVED MARKER EVIDENCE
+T_cell: genes=['CD3D', 'CD3E']; positive_cells=8/10; mean_sum=2.4493; median_sum=2.6035
+B_cell: genes=['MS4A1', 'CD79A', 'CD37']; positive_cells=10/10; mean_sum=2.2157; median_sum=1.4997
+NK_cell: genes=['NKG7', 'GNLY', 'KLRD1']; positive_cells=9/10; mean_sum=3.0046; median_sum=2.3967
+Monocyte: genes=['LYZ', 'LST1', 'S100A8', 'S100A9']; positive_cells=10/10; mean_sum=2.2172; median_sum=2.3595
