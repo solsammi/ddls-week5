@@ -274,6 +274,10 @@ table.mini th { font: 500 11px/1.2 var(--mono); color: var(--muted); text-transf
           <div class="found"><span class="tag c7">7</span> positive cells: T <span class="num">8/10</span> · B <span class="num">10/10</span> · NK <span class="num">9/10</span> · Mono <span class="num">10/10</span>, so the programmes overlap.<br><span class="tag c6">6</span> Mono <span class="num">7/13</span>; T, B and NK each <span class="num">≤3/13</span>.</div>
         </div>
         <div class="step">
+          <div class="what">Where each piece of knowledge came from<span class="why">I asked the agent where its biology came from</span></div>
+          <div class="found">Every report is split into <i>dataset</i>, <i>transcript</i> and <i>model pretrained</i> knowledge.</div>
+        </div>
+        <div class="step">
           <div class="what">Evidence navigator app<span class="why">So the owner can see the evidence directly</span></div>
           <div class="found">A FastAPI + Scanpy app showing the UMAP, a gene lookup, marker lists, a dot plot, and stability and doublet summaries. <b>I demo it after the slides.</b></div>
         </div>
@@ -292,7 +296,6 @@ table.mini th { font: 500 11px/1.2 var(--mono); color: var(--muted); text-transf
           </table>
         </div>
         <div class="check"><b>Raw-count doublet screen</b><span class="small"><i>Why:</i> unusually high counts plus markers from two lineages can mean a doublet, two cells captured together that look like a new cell type.</span><br>Cluster 7 has a median of <span class="num">8,499</span> raw counts, against 1,759–5,293 in clusters 0–5, and <span class="num">8/10</span> of its cells show more than one programme. Cluster 6: <span class="num">4/13</span>.<br><span class="small"><i>Conclusion:</i> cluster 7 looks like it could be made of doublets rather than one real cell type. This is a screening flag, not proof.</span></div>
-        <div class="check me"><b>Where each piece of knowledge came from</b>I asked the agent where its biology came from, then had every report split into <i>dataset</i>, <i>transcript</i> and <i>model pretrained</i> knowledge.</div>
       </div>
     </div>
   </div>
