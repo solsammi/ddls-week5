@@ -211,13 +211,24 @@ def cell_lookup(cell_id: str, request: Request):
     }
 
 
+@app.get("/api/reclustering")
+def reclustering_summary():
+    path = RESULTS / "reclustering_summary.csv"
+    if not path.exists():
+        raise HTTPException(404, "Reclustering summary not found in results/")
+    table = pd.read_csv(path)
+    return {"method": "Independent reclustering from the raw UMI counts: normalised to 10,000 counts per cell, log-transformed, 2,000 highly variable genes, scaled, 40-component PCA, 15-nearest-neighbour graph on 30 PCs, then Leiden at four resolutions. The facility's clusters were not overwritten.",
+            "runs": [{"resolution": float(r.resolution), "n_clusters": int(r.n_reclustered), "mean_purity": float(r.mean_recluster_cluster_purity)} for r in table.itertuples()]}
+
+
 @app.get("/api/doublets")
 def doublet_summary(request: Request):
     table = request.app.state.doublet_summary
     if table is None:
         raise HTTPException(404, "Doublet summary not found in results/")
     rows = table[table["cluster"].astype(str).isin(["6", "7"])]
-    return {"clusters": [{"cluster": str(r.cluster), "n_cells": int(r.n_cells), "median_raw_counts": float(r.median_raw_counts), "max_raw_counts": float(r.max_raw_counts), "mixed_cells": int(r.mixed_cells)} for r in rows.itertuples()],
+    others = table[~table["cluster"].astype(str).isin(["6", "7"])]["median_raw_counts"]
+    return {"others_median_raw_counts": [float(others.min()), float(others.max())], "clusters": [{"cluster": str(r.cluster), "n_cells": int(r.n_cells), "median_raw_counts": float(r.median_raw_counts), "max_raw_counts": float(r.max_raw_counts), "mixed_cells": int(r.mixed_cells)} for r in rows.itertuples()],
             "method": "From results/doublet_cluster_summary.csv: raw UMI depth and co-expression of the owner-supplied marker programmes."}
 
 
@@ -290,10 +301,12 @@ HTML = r'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name
 .gene-link{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
 .gene-link:hover{color:#2563eb}
 .err{color:#b91c1c;font-size:.75rem;margin-top:.25rem}
+#bigText[aria-pressed="true"]{background:#3f3a34;color:#fff}
+.no-split li{break-inside:avoid}
 </style></head>
 <body class="bg-[#fcfaf5] text-[#3f3a34]"><main class="mx-auto max-w-7xl p-4 sm:p-6">
 
-<header><h1 class="text-3xl font-bold">PBMC evidence viewer <span class="text-base font-normal text-slate-500">v2</span></h1><p class="mt-1 text-slate-600">Explore computational clusters without treating them as cell-type labels.</p></header>
+<header class="flex flex-wrap items-start justify-between gap-3"><div><p class="text-xs font-semibold uppercase tracking-widest text-slate-500">DDLS 2026 · Week 5 · Junk or signal?</p><h1 class="mt-1 text-3xl font-bold">A PBMC dataset, two tiny clusters, two decisions</h1><p class="mt-1 text-sm text-slate-600">Presented by <b>Sammi Baudin</b> · Data owner: <b>Dr. Ravi Menon</b>, immunologist · PBMC evidence viewer v2</p></div><button id="bigText" class="rounded border bg-white px-3 py-1.5 text-sm" aria-pressed="false">Larger text</button></header>
 
 <section id="decisionStrip" class="mt-4 grid gap-3 sm:grid-cols-2" aria-label="Decisions for clusters 6 and 7"></section>
 
@@ -301,7 +314,8 @@ HTML = r'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name
 <button class="tab-btn rounded-full border px-4 py-1.5 text-sm font-medium" role="tab" data-tab="data" aria-selected="true">Data &amp; question</button>
 <button class="tab-btn rounded-full border px-4 py-1.5 text-sm font-medium" role="tab" data-tab="explore" aria-selected="false">Explore</button>
 <button class="tab-btn rounded-full border px-4 py-1.5 text-sm font-medium" role="tab" data-tab="compare" aria-selected="false">Clusters 6 &amp; 7</button>
-<button class="tab-btn rounded-full border px-4 py-1.5 text-sm font-medium" role="tab" data-tab="validation" aria-selected="false">Validation</button>
+<button class="tab-btn rounded-full border px-4 py-1.5 text-sm font-medium" role="tab" data-tab="validation" aria-selected="false">Methods &amp; validation</button>
+<button class="tab-btn rounded-full border px-4 py-1.5 text-sm font-medium" role="tab" data-tab="answers" aria-selected="false">Answers, limits &amp; AI use</button>
 </nav>
 
 <!-- ================= EXPLORE ================= -->
@@ -395,6 +409,15 @@ HTML = r'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name
 <!-- ================= CLUSTERS 6 & 7 ================= -->
 <section data-panel="compare" class="mt-4" hidden>
 <div class="rounded-xl bg-white p-4 shadow-sm">
+<h2 class="text-xl font-bold">Should either cluster be merged, split or binned?</h2>
+<p class="mt-1 text-xs text-slate-500">From the stability runs, the independent reclustering and the raw-count per-cell metrics already in <code>results/</code>.</p>
+<div class="mt-3 grid gap-4 md:grid-cols-2">
+<div class="rounded-lg border-t-4 p-3" style="border-color:#d04482"><div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Cluster 6</div><div class="text-lg font-bold" style="color:#b0306a">One real, separate group. Not junk.</div><div class="mt-2"><div class="grid gap-1 border-t py-2 text-sm sm:grid-cols-[9rem_1fr] sm:gap-3"><div class="font-semibold">Merge?<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">No</span></div><div>All 13 cells stay together at all 4 reclustering resolutions, with no other cells joining them. 12/13 stay together in 98% of stability runs; the exception is one cell, at 74%.</div></div><div class="grid gap-1 border-t py-2 text-sm sm:grid-cols-[9rem_1fr] sm:gap-3"><div class="font-semibold">Split?<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">No</span></div><div>No run ever divides it. One outlier cell has high depth (8,875 raw counts) and some monocyte and B-cell marker signal. It is a single cell, not a subgroup.</div></div><div class="grid gap-1 border-t py-2 text-sm sm:grid-cols-[9rem_1fr] sm:gap-3"><div class="font-semibold">Dead or empty?<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">Unlikely</span></div><div>Mito is 0.7–3.2%, not high. All 13 cells express both <span class="gene-link" data-gene="PPBP">PPBP</span> and <span class="gene-link" data-gene="PF4">PF4</span> in raw counts (31–116 per cell), the owner’s platelet-contamination clue. The cells have low depth, but they are not blank.</div></div></div></div>
+<div class="rounded-lg border-t-4 p-3" style="border-color:#829b32"><div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Cluster 7</div><div class="text-lg font-bold" style="color:#5f7422">An 8-cell core plus 2 loosely attached cells.</div><div class="mt-2"><div class="grid gap-1 border-t py-2 text-sm sm:grid-cols-[9rem_1fr] sm:gap-3"><div class="font-semibold">Split?<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">Not into two clusters</span></div><div>The same 2 cells split off at 3 of 4 reclustering resolutions. They join a group made almost entirely of cluster 0 cells, not a new group of their own.</div></div><div class="grid gap-1 border-t py-2 text-sm sm:grid-cols-[9rem_1fr] sm:gap-3"><div class="font-semibold">Stability<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">8 stable, 2 not</span></div><div>The 8 core cells stay together in 76–79% of runs. The 2 loosely attached cells stay only 21% of the time; they are the source of the “min 0.21” in the stability table.</div></div><div class="grid gap-1 border-t py-2 text-sm sm:grid-cols-[9rem_1fr] sm:gap-3"><div class="font-semibold">The 8 core cells<span class="block text-xs font-medium uppercase tracking-wide text-slate-500">Not uniform</span></div><div>Some core cells are high in NK markers and others high in B-cell markers, but no run separates them. With 8 cells, any sub-split would be guesswork.</div></div></div><label class="mt-2 flex items-center gap-2 text-xs"><input type="checkbox" data-show-loose> Show the 2 loosely attached cells on the Explore map</label></div>
+</div>
+</div>
+
+<div class="mt-4 rounded-xl bg-white p-4 shadow-sm">
 <div class="flex flex-wrap items-center gap-2 text-sm"><span class="font-semibold">Compare cluster</span><select id="cmpA" class="rounded border p-1.5"></select><span>with cluster</span><select id="cmpB" class="rounded border p-1.5"></select></div>
 <p class="mt-1 text-xs text-slate-500">Stored quality values, owner-supplied marker programmes and top ranked markers, side by side. Click a gene to colour the map by it.</p>
 <div id="compareGrid" class="mt-4 grid gap-4 md:grid-cols-2"></div>
@@ -404,12 +427,26 @@ HTML = r'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name
 <!-- ================= VALIDATION ================= -->
 <section data-panel="validation" class="mt-4" hidden>
 <div class="rounded-xl bg-white p-4 shadow-sm">
+<h2 class="text-xl font-bold">How the analysis was done</h2>
+<p class="mt-1 text-xs text-slate-500">Why each step was done, and what it showed. Clusters and UMAP came from the facility and were not changed.</p>
+<div class="mt-2"><div class="grid gap-1 border-t py-2 text-sm md:grid-cols-[13rem_1fr] md:gap-4"><div class="font-semibold">Inspect the file<span class="block text-xs font-normal text-slate-500">The owner didn’t know the layout</span></div><div>Rows are cells, columns are genes. 0 missing values and 0 duplicate cells. Raw counts are kept in a separate layer.</div></div><div class="grid gap-1 border-t py-2 text-sm md:grid-cols-[13rem_1fr] md:gap-4"><div class="font-semibold">Per-cell quality<span class="block text-xs font-normal text-slate-500">The “350 genes” is a summary figure</span></div><div>Cluster 6: the median is 350 genes, but the range runs from 212 to 2,455, with one cell at 8,931 counts. Mito 0.7–3.2%, which is not high.</div></div><div class="grid gap-1 border-t py-2 text-sm md:grid-cols-[13rem_1fr] md:gap-4"><div class="font-semibold">Marker ranking<span class="block text-xs font-normal text-slate-500">The owner asked for “top genes”; Wilcoxon, cluster vs rest</span></div><div>Cluster 6: <span class="gene-link" data-gene="PPBP">PPBP</span> and <span class="gene-link" data-gene="PF4">PF4</span> are in the top 4, the owner’s platelet clue. Cluster 7: <span class="gene-link" data-gene="ACTG1">ACTG1</span>, <span class="gene-link" data-gene="GAPDH">GAPDH</span>, <span class="gene-link" data-gene="STMN1">STMN1</span>, <span class="gene-link" data-gene="PCNA">PCNA</span> are not lineage markers.</div></div><div class="grid gap-1 border-t py-2 text-sm md:grid-cols-[13rem_1fr] md:gap-4"><div class="font-semibold">Owner’s marker programmes<span class="block text-xs font-normal text-slate-500">Checks the coherent vs mixed criterion, cell by cell</span></div><div>Cluster 7 positive cells: T 8/10 · B 10/10 · NK 9/10 · Mono 10/10, so the programmes overlap. Cluster 6: Mono 7/13; T, B and NK each ≤3/13.</div></div><div class="grid gap-1 border-t py-2 text-sm md:grid-cols-[13rem_1fr] md:gap-4"><div class="font-semibold">Where each piece of knowledge came from<span class="block text-xs font-normal text-slate-500">Unsourced biology was challenged</span></div><div>Every report is split into <i>dataset</i>, <i>transcript</i> and <i>model pretrained</i> knowledge.</div></div><div class="grid gap-1 border-t py-2 text-sm md:grid-cols-[13rem_1fr] md:gap-4"><div class="font-semibold">This evidence navigator<span class="block text-xs font-normal text-slate-500">So the owner can see the evidence directly</span></div><div>A FastAPI + Scanpy app: the map, gene lookup, marker lists, dot plot, and the validation results below.</div></div></div>
+</div>
+
+<div class="mt-4 rounded-xl bg-white p-4 shadow-sm">
+<h2 class="text-xl font-bold">Independent reclustering from raw counts</h2>
+<p id="reclusterMethod" class="mt-1 text-xs text-slate-500"></p>
+<div class="mt-3 overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr class="border-b"><th class="p-2">Leiden resolution</th><th class="p-2">Clusters found</th><th class="p-2">Mean cluster purity</th></tr></thead><tbody id="reclusterRows"></tbody></table></div>
+<p class="mt-2 text-sm">Mean cluster purity was <b id="purityRange"></b>: the new clusters mostly reproduce the facility’s groups. Clusters 6 and 7 are small, so they are the most sensitive to these settings (see the Clusters 6 &amp; 7 tab).</p>
+<p class="mt-1 text-xs text-slate-500">A validation sensitivity check, not proof that one clustering is biologically correct.</p>
+</div>
+
+<div class="mt-4 rounded-xl bg-white p-4 shadow-sm">
 <h2 class="text-xl font-bold">Clustering stability &amp; doublet screening</h2>
 <p id="stabilityMethod" class="mt-1 text-xs text-slate-500"></p>
 <div class="mt-3 overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr class="border-b"><th class="p-2">Cluster</th><th class="p-2">Cells</th><th class="p-2">Median stability</th><th class="p-2">Range</th></tr></thead><tbody id="stabilityRows"></tbody></table></div>
 <div class="mt-3 grid gap-2 sm:grid-cols-2"><div class="rounded bg-amber-50 p-3 text-sm"><b>Cluster 6:</b> Computationally stable; this does not establish identity or deletion safety.</div><div class="rounded bg-blue-50 p-3 text-sm"><b>Cluster 7:</b> Less stable; 2 of its 10 cells stay with it in only 21% of runs.</div></div>
 <p class="mt-3 text-xs text-slate-500">DATASET-DERIVED stability scores. Conclusions are computational observations, not cell-type annotations.</p>
-<div class="mt-4 border-t pt-4"><h3 class="font-semibold">Doublet screening summary</h3><p id="doubletMethod" class="mt-1 text-xs text-slate-500"></p><div id="doubletRows" class="mt-2 grid gap-2 sm:grid-cols-2"></div><p class="mt-2 text-xs text-slate-500">Screening flags are not doublet diagnoses. They use raw counts and marker co-expression; dedicated validation such as Scrublet would be needed for stronger evidence.</p></div>
+<div class="mt-4 border-t pt-4"><h3 class="font-semibold">Doublet screening summary</h3><p class="mt-1 text-sm"><b>Why:</b> unusually high counts plus markers from two lineages can mean a doublet, two cells captured together that look like a new cell type.</p><p id="doubletMethod" class="mt-1 text-xs text-slate-500"></p><div id="doubletRows" class="mt-2 grid gap-2 sm:grid-cols-2"></div><p id="doubletCompare" class="mt-2 text-sm"></p><p class="mt-1 text-sm"><b>Conclusion:</b> cluster 7 looks like it could be made of doublets rather than one real cell type. This is a screening flag, not proof.</p><p class="mt-2 text-xs text-slate-500">Screening flags are not doublet diagnoses. They use raw counts and marker co-expression; dedicated validation such as Scrublet would be needed for stronger evidence.</p></div>
 </div>
 
 <div class="mt-4 rounded-xl bg-white p-4 shadow-sm">
@@ -418,7 +455,35 @@ HTML = r'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name
 <div class="mt-3 overflow-x-auto"><table class="w-full min-w-[56rem] text-left text-sm"><thead><tr class="border-b"><th class="p-2">Cluster</th><th class="p-2">Suggested label</th><th class="p-2">Confidence</th><th class="p-2">Dataset-derived</th><th class="p-2">Transcript-derived</th><th class="p-2">Model pretrained knowledge</th></tr></thead><tbody id="annotationRows"></tbody></table></div>
 </div>
 
-<details class="mt-4 rounded-xl bg-white p-4 text-sm shadow-sm"><summary class="cursor-pointer font-semibold">Limitations and provenance</summary><div class="mt-2 space-y-2 text-slate-600"><p><b>Dataset-derived:</b> expression, quality, clusters, UMAP, and rankings.</p><p><b>Transcript-derived:</b> owner goals, supplied marker examples, and decision criteria.</p><p><b>Model knowledge:</b> biological annotations not explicitly in the transcript are not used as established evidence.</p><p>Clusters 6 and 7 contain only 13 and 10 cells. UMAP is a projection, not a measurement. There is no universal mitochondrial cutoff supplied here. Marker rankings do not prove identity. Read-level quality was not checked; only the processed file was supplied.</p></div></details>
+</section>
+
+<!-- ================= ANSWERS, LIMITS & AI USE ================= -->
+<section data-panel="answers" class="mt-4" hidden>
+<div class="grid gap-4 md:grid-cols-2">
+<div class="rounded-xl p-4" style="background:#fbeaf2"><div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Cluster 6</div><div class="mt-1 text-2xl font-bold" style="color:#b0306a">Don’t delete. Keep it for review.</div><p class="mt-2 text-sm">It is not blank: the cells differ from each other, one cell has high depth, and the top markers PPBP/PF4 match the owner’s own platelet-contamination clue. What the cells are is still unresolved.</p><p class="mt-2 text-xs"><b>Confidence:</b> moderate–high that it is a real, separate group rather than dead or empty material; low for what the cells are.</p></div>
+<div class="rounded-xl p-4" style="background:#eef3e1"><div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Cluster 7</div><div class="mt-1 text-2xl font-bold" style="color:#5f7422">No. Don’t prioritise the next run.</div><p class="mt-2 text-sm">Its depth is high, but the T, B, NK and monocyte programmes overlap in the same cells, and the top markers are generic. This fits the owner’s definition of “mixed or uninformative”.</p><p class="mt-2 text-xs"><b>Confidence:</b> low–moderate for the recommendation; moderate for the 8 + 2 structure.</p></div>
+</div>
+
+<div class="mt-4 rounded-xl bg-white p-4 shadow-sm">
+<h2 class="text-xl font-bold">Limits</h2>
+<ul class="mt-2 list-disc space-y-1.5 pl-5 text-sm">
+<li>Both answers rest on <b>10 and 13 cells</b>. Cluster 7 is the least stable cluster (some cells stay with it in only 21% of runs), and the doublet flag is a screening rule, not a validated classifier. This is enough evidence to <i>hold back</i> a decision, but not enough to name either cluster’s identity.</li>
+<li>Read-level quality (base quality, mapping rate, saturation) was never checked: only the processed file was supplied, with no raw reads or run report.</li>
+<li>The facility’s cell filtering before delivery is undocumented, so the cells it removed, and the thresholds it used, are unknown.</li>
+<li>UMAP is a 2-D projection, not a measurement; a cell’s position on the map can mislead (e.g. <span class="gene-link" data-cell="CACAGAACCCTTGC-1">CACAGAACCCTTGC-1</span>, a stable cluster 3 cell drawn between clusters 2 and 0). No universal mitochondrial cut-off was supplied. Marker rankings do not prove identity.</li>
+</ul>
+<h3 class="mt-4 text-sm font-semibold">Where each piece of knowledge came from</h3>
+<ul class="mt-1 list-disc space-y-1 pl-5 text-sm text-slate-700"><li><b>Dataset-derived:</b> expression, quality, clusters, UMAP, rankings, stability and screening metrics.</li><li><b>Transcript-derived:</b> the owner’s goals, marker examples and decision criteria.</li><li><b>Model pretrained knowledge:</b> kept in a separate column in the annotation table and not used as established evidence.</li></ul>
+</div>
+
+<div class="mt-4 rounded-xl bg-white p-4 shadow-sm">
+<h2 class="text-xl font-bold">How the work was split</h2>
+<div class="mt-3 grid gap-4 lg:grid-cols-[1fr_1fr_1.4fr]">
+<div><h3 class="font-semibold">Pi <span class="text-xs font-normal text-slate-500">coding agent</span></h3><ul class="mt-1 list-disc space-y-1 pl-5 text-sm"><li>Drafted <code>AGENTS.md</code> and <code>spec.md</code> from my interview transcript</li><li>Set up the <code>uv</code> environment; wrote all 7 analysis scripts</li><li>Built the FastAPI/Scanpy navigator (version 1) and made the git commits</li><li>Proposed the plan, annotation, reclustering and stability designs; I approved them step by step</li></ul></div>
+<div><h3 class="font-semibold">Claude <span class="text-xs font-normal text-slate-500">Claude Code</span></h3><ul class="mt-1 list-disc space-y-1 pl-5 text-sm"><li>Built the seminar slide deck from the existing transcripts and result files</li><li>Built this version 2 of the app from version 1: cell lookup, stability colouring, tabs, the all-cluster dot plot and these summary pages</li><li>Looked up existing results for the cluster 6 and 7 closer look</li><li>No new analysis</li></ul></div>
+<div class="lg:border-l lg:pl-4"><h3 class="font-semibold">Me</h3><ul class="no-split mt-1 list-disc pl-5 text-sm sm:columns-2 sm:gap-8 [&>li]:mb-1"><li>Ran the owner interview and pinned down “coherent”, “mixed” and “junk”</li><li>Set the rules: reviewable scripts, commit often</li><li>Asked for a plan first and ran it in stages</li><li>Caught the 0.00-score ranking bug</li><li>Challenged unsourced biology, which led to the provenance split</li><li>Asked about standard practices</li><li>Chose 3 seeds to keep compute low</li><li>Asked for the raw-count doublet check</li><li>Designed the app layout</li><li>Checked that <code>.env</code> was never committed</li></ul></div>
+</div>
+</div>
 </section>
 
 <datalist id="geneList"></datalist>
@@ -532,7 +597,8 @@ async function renderCompare(){const a=$('cmpA').value,b=$('cmpB').value;$('comp
 /* ---------- validation ---------- */
 function renderAnnotations(){const all=$('annAll').checked;$('annotationRows').innerHTML=S.annotations.filter(x=>all||['6','7'].includes(String(x.cluster))).map(x=>`<tr class="border-b align-top"><td class="p-2 font-semibold">${x.cluster}</td><td class="p-2">${esc(x.label)}</td><td class="p-2">${esc(x.confidence)}</td><td class="p-2">${esc(x.dataset)}</td><td class="p-2">${esc(x.transcript)}</td><td class="p-2">${esc(x.model)}</td></tr>`).join('')}
 async function loadAnnotations(){const a=await get('/api/annotations');S.annotations=a.rows;renderAnnotations()}
-async function loadDoublets(){const d=await get('/api/doublets');$('doubletMethod').textContent=d.method;$('doubletRows').innerHTML=d.clusters.map(x=>`<div class="rounded bg-slate-50 p-3 text-sm"><b>Cluster ${x.cluster}</b> · ${x.n_cells} cells<br>Median raw counts ${fmt(x.median_raw_counts)} (max ${fmt(x.max_raw_counts)})<br>Cells with more than one marker programme: ${x.mixed_cells}/${x.n_cells}</div>`).join('')}
+async function loadReclustering(){const r=await get('/api/reclustering');$('reclusterMethod').textContent=r.method;$('reclusterRows').innerHTML=r.runs.map(x=>`<tr class="border-b"><td class="p-2">${x.resolution}</td><td class="p-2">${x.n_clusters}</td><td class="p-2 tabular-nums">${x.mean_purity.toFixed(2)}</td></tr>`).join('');const p=r.runs.map(x=>x.mean_purity);$('purityRange').textContent=Math.min(...p).toFixed(2)+'–'+Math.max(...p).toFixed(2)}
+async function loadDoublets(){const d=await get('/api/doublets');$('doubletMethod').textContent=d.method;const c7=d.clusters.find(x=>x.cluster==='7');if(c7)$('doubletCompare').innerHTML=`Cluster 7 has a median of <b>${fmt(c7.median_raw_counts)}</b> raw counts, against ${fmt(d.others_median_raw_counts[0])}–${fmt(d.others_median_raw_counts[1])} in clusters 0–5.`;$('doubletRows').innerHTML=d.clusters.map(x=>`<div class="rounded bg-slate-50 p-3 text-sm"><b>Cluster ${x.cluster}</b> · ${x.n_cells} cells<br>Median raw counts ${fmt(x.median_raw_counts)} (max ${fmt(x.max_raw_counts)})<br>Cells with more than one marker programme: ${x.mixed_cells}/${x.n_cells}</div>`).join('')}
 async function loadStability(){const s=await get('/api/stability');$('stabilityMethod').textContent=s.method;$('stabilityRows').innerHTML=s.clusters.filter(x=>['6','7'].includes(String(x.cluster))).map(x=>`<tr class="border-b"><td class="p-2">${x.cluster}</td><td class="p-2">${x.n_cells}</td><td class="p-2">${Number(x.median_same_original_cocluster_frequency).toFixed(3)}</td><td class="p-2">${Number(x.min_same_original_cocluster_frequency).toFixed(3)}–${Number(x.max_same_original_cocluster_frequency).toFixed(3)}</td></tr>`).join('')}
 
 /* ---------- start ---------- */
@@ -550,18 +616,23 @@ async function init(){data=await get('/api/umap')
  $('dotplot').on('plotly_click',ev=>{const pt=ev.points[0];if(pt&&pt.customdata)clickGene(pt.customdata)})
  get('/api/genes').then(g=>{$('geneList').innerHTML=g.genes.map(x=>`<option value="${esc(x)}">`).join('')}).catch(e=>console.warn('Gene list unavailable',e))}
 
-document.addEventListener('click',ev=>{const add=ev.target.closest('.add-gene');if(add){addDotGene(add.dataset.gene);return}const link=ev.target.closest('.gene-link');if(link)clickGene(link.dataset.gene)})
+document.addEventListener('click',ev=>{const add=ev.target.closest('.add-gene');if(add){addDotGene(add.dataset.gene);return}const link=ev.target.closest('.gene-link');if(link&&link.dataset.cell){showTab('explore');$('cellId').value=link.dataset.cell;findCell();return}if(link)clickGene(link.dataset.gene)})
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));document.querySelectorAll('[data-goto]').forEach(b=>b.onclick=()=>showTab(b.dataset.goto))
 $('colourMode').onchange=()=>{$('geneControls').hidden=$('colourMode').value!=='gene';showErr('colourErr')}
 $('colourBtn').onclick=apply;$('gene').onkeydown=e=>{if(e.key==='Enter')apply()}
 $('findBtn').onclick=findCell;$('cellId').onkeydown=e=>{if(e.key==='Enter')findCell()}
-$('looseToggle').onchange=e=>toggleLoose(e.target.checked)
+$('looseToggle').onchange=e=>{document.querySelectorAll('[data-show-loose]').forEach(b=>b.checked=e.target.checked);toggleLoose(e.target.checked)}
+document.querySelectorAll('[data-show-loose]').forEach(b=>b.onchange=e=>{$('looseToggle').checked=e.target.checked;toggleLoose(e.target.checked)})
 $('resetBtn').onclick=()=>{S.selected=null;plot();if(S.dot)drawDot(S.dot);$('card').hidden=true}
 $('dotAddBtn').onclick=()=>addDotGene($('dotGene').value);$('dotGene').onkeydown=e=>{if(e.key==='Enter')addDotGene($('dotGene').value)}
 $('dotResetBtn').onclick=()=>{S.dotGenes=null;loadDot()}
 $('annAll').onchange=renderAnnotations
+function setBig(on){document.documentElement.style.fontSize=on?'19px':'';$('bigText').setAttribute('aria-pressed',String(on));$('bigText').textContent=on?'Normal text':'Larger text';try{localStorage.setItem('bigText',on?'1':'')}catch(e){}setTimeout(()=>{try{Plotly.Plots.resize('plot')}catch(e){}try{Plotly.Plots.resize('dotplot')}catch(e){}},50)}
+$('bigText').onclick=()=>setBig($('bigText').getAttribute('aria-pressed')!=='true')
+try{if(localStorage.getItem('bigText'))setBig(true)}catch(e){}
 loadStability().catch(e=>console.warn('Stability summary unavailable',e))
 loadDoublets().catch(e=>console.warn('Doublet summary unavailable',e))
+loadReclustering().catch(e=>{$('reclusterMethod').textContent=e.message})
 loadAnnotations().catch(e=>console.warn('Annotations unavailable',e))
 init().catch(e=>{document.querySelector('main').insertAdjacentHTML('afterbegin',`<p class="mb-4 rounded bg-red-50 p-3 text-sm text-red-700">Could not load the dataset: ${esc(e.message)}</p>`)})
 </script></body></html>'''
