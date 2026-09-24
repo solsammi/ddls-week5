@@ -6,7 +6,7 @@ import pandas as pd
 import scanpy as sc
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent  # project root (scripts live in analysis/)
 OUT = ROOT / "results"
 OUT.mkdir(exist_ok=True)
 base = sc.read_h5ad(ROOT / "data/pbmc3k.h5ad")

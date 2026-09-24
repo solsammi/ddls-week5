@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import scanpy as sc
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent  # project root (scripts live in analysis/)
 ad = sc.read_h5ad(ROOT / "data/pbmc3k.h5ad")
 obs = ad.obs.copy()
 labels = obs["leiden"].astype(str)

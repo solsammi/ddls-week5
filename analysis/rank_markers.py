@@ -3,7 +3,7 @@ from pathlib import Path
 import scanpy as sc
 import numpy as np
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent  # project root (scripts live in analysis/)
 ad = sc.read_h5ad(ROOT / "data/pbmc3k.h5ad")
 ad.obs["cluster_for_ranking"] = ad.obs["leiden"].astype(str)
 sc.tl.rank_genes_groups(ad, groupby="cluster_for_ranking", method="wilcoxon", n_genes=30, key_added="cluster_markers")

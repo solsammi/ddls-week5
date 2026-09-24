@@ -5,7 +5,7 @@ import scanpy as sc
 import numpy as np
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent  # project root (scripts live in analysis/)
 archive = ROOT / "ddls-week5-s1-junk-or-signal-dataset.zip"
 data_path = ROOT / "data" / "pbmc3k.h5ad"
 data_path.parent.mkdir(exist_ok=True)
