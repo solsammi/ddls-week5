@@ -298,13 +298,45 @@ HTML = r'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name
 <section id="decisionStrip" class="mt-4 grid gap-3 sm:grid-cols-2" aria-label="Decisions for clusters 6 and 7"></section>
 
 <nav class="mt-5 flex flex-wrap gap-2" role="tablist">
-<button class="tab-btn rounded-full border px-4 py-1.5 text-sm font-medium" role="tab" data-tab="explore" aria-selected="true">Explore</button>
+<button class="tab-btn rounded-full border px-4 py-1.5 text-sm font-medium" role="tab" data-tab="data" aria-selected="true">Data &amp; question</button>
+<button class="tab-btn rounded-full border px-4 py-1.5 text-sm font-medium" role="tab" data-tab="explore" aria-selected="false">Explore</button>
 <button class="tab-btn rounded-full border px-4 py-1.5 text-sm font-medium" role="tab" data-tab="compare" aria-selected="false">Clusters 6 &amp; 7</button>
 <button class="tab-btn rounded-full border px-4 py-1.5 text-sm font-medium" role="tab" data-tab="validation" aria-selected="false">Validation</button>
 </nav>
 
 <!-- ================= EXPLORE ================= -->
-<section data-panel="explore" class="mt-4">
+<!-- ================= DATA & QUESTION ================= -->
+<section data-panel="data" class="mt-4">
+<div class="grid gap-4 lg:grid-cols-2">
+<div class="rounded-xl bg-white p-5 shadow-sm">
+<h2 class="text-xl font-bold">The data</h2>
+<div class="mt-3 grid grid-cols-3 gap-2 text-center"><div class="rounded bg-slate-50 p-2"><div class="text-2xl font-bold tabular-nums">2,700</div><div class="text-xs text-slate-500">human PBMCs (cells)</div></div><div class="rounded bg-slate-50 p-2"><div class="text-2xl font-bold tabular-nums">13,714</div><div class="text-xs text-slate-500">genes</div></div><div class="rounded bg-slate-50 p-2"><div class="text-2xl font-bold tabular-nums">8</div><div class="text-xs text-slate-500">clusters, 0–7</div></div></div>
+<ul class="mt-4 list-disc space-y-2 pl-5 text-sm">
+<li><b>PBMC</b> = peripheral blood mononuclear cells: mainly lymphocytes and monocytes isolated from blood.</li>
+<li>The blood was collected in a university hospital lab. The core facility isolated the cells, ran single-cell RNA sequencing and returned a <b>processed</b> file with the cells already grouped into clusters 0–7, a 2-D map (UMAP) and summary numbers.</li>
+<li>The file, <code class="rounded bg-slate-100 px-1">pbmc3k.h5ad</code>, holds log-normalised expression, raw UMI counts, the facility’s cluster label (<code class="rounded bg-slate-100 px-1">leiden</code>), per-cell quality fields (<code class="rounded bg-slate-100 px-1">n_genes</code>, <code class="rounded bg-slate-100 px-1">total_counts</code>, <code class="rounded bg-slate-100 px-1">pct_mito</code>) and the UMAP coordinates. Every cell belongs to one cluster.</li>
+<li>No methods sheet came with the file. The owner did not know the file’s layout, which processing had been done, or whether the reported “genes/cell” figures were means or medians.</li>
+<li>The owner trusts the facility’s numbers most and the biological meaning of the numbered clusters least, because nobody has identified them.</li>
+</ul>
+<p class="mt-4 text-xs text-slate-500">Source: the data owner interview and the file description supplied with the dataset. Clusters and the map were computed by the facility and are not changed by this app.</p>
+</div>
+
+<div class="rounded-xl bg-white p-5 shadow-sm">
+<h2 class="text-xl font-bold">The owner’s question</h2>
+<p class="mt-1 text-sm text-slate-600">Dr. Ravi Menon, immunologist, is cleaning up the dataset before making a figure and has two decisions to make.</p>
+<div class="mt-3 rounded-lg border-l-4 bg-slate-50 p-3" style="border-color:#d04482"><div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Cluster 6 · 13 cells · ~350 genes/cell · 1.6% mito</div><div class="mt-1 font-semibold">“Is it safe to delete?”</div><p class="mt-1 text-sm text-slate-600">He was about to bin it as dead cells or empty droplets based only on the low gene count, without having looked at what the cells express.</p></div>
+<div class="mt-3 rounded-lg border-l-4 bg-slate-50 p-3" style="border-color:#829b32"><div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Cluster 7 · 10 cells · ~2,363 genes/cell</div><div class="mt-1 font-semibold">“Should the next sequencing run go to this cluster?”</div><p class="mt-1 text-sm text-slate-600">That spends facility time and budget. <b>Yes</b> only if the cluster has a clear, likely blood-cell identity (T, B, NK or monocyte); otherwise leave it out of the figure.</p></div>
+<h3 class="mt-4 text-sm font-semibold">The owner’s own definitions</h3>
+<dl class="mt-2 grid gap-2 text-sm sm:grid-cols-3"><div class="rounded bg-slate-50 p-2"><dt class="text-xs font-semibold uppercase text-slate-500">Coherent</dt><dd>Several genes from the same lineage across most cells, e.g. CD3D/E with TRBC for T cells.</dd></div><div class="rounded bg-slate-50 p-2"><dt class="text-xs font-semibold uppercase text-slate-500">Mixed</dt><dd>Strong programmes that don’t fit together in the same cells, e.g. T-cell and monocyte.</dd></div><div class="rounded bg-slate-50 p-2"><dt class="text-xs font-semibold uppercase text-slate-500">Generic / junk</dt><dd>Mostly mitochondrial, ribosomal, housekeeping or stress genes.</dd></div></dl>
+<h3 class="mt-4 text-sm font-semibold">The owner’s marker clues</h3>
+<p class="mt-1 text-sm">T cells <span class="gene-link" data-gene="CD3D">CD3D</span>, <span class="gene-link" data-gene="CD3E">CD3E</span>, TRBC1/2 · B cells <span class="gene-link" data-gene="MS4A1">MS4A1</span>, <span class="gene-link" data-gene="CD79A">CD79A</span>, <span class="gene-link" data-gene="CD37">CD37</span> · NK cells <span class="gene-link" data-gene="NKG7">NKG7</span>, <span class="gene-link" data-gene="GNLY">GNLY</span>, <span class="gene-link" data-gene="KLRD1">KLRD1</span> · Monocytes <span class="gene-link" data-gene="LYZ">LYZ</span>, <span class="gene-link" data-gene="LST1">LST1</span>, <span class="gene-link" data-gene="S100A8">S100A8</span>/<span class="gene-link" data-gene="S100A9">A9</span> · Dendritic-cell-like <span class="gene-link" data-gene="FCER1A">FCER1A</span>, <span class="gene-link" data-gene="CST3">CST3</span> · Platelet contamination <span class="gene-link" data-gene="PPBP">PPBP</span>, <span class="gene-link" data-gene="PF4">PF4</span></p>
+<p class="mt-2 text-xs text-slate-500">These are clues, not proof. Click a gene to see it on the map. TRBC1/2 are not in this dataset.</p>
+<button class="mt-4 rounded bg-blue-600 px-4 py-2 text-sm text-white" data-goto="explore">Explore the data →</button>
+</div>
+</div>
+</section>
+
+<section data-panel="explore" class="mt-4" hidden>
 <div class="rounded-xl border border-[#d7e4da] bg-[#f1f7f2] p-3 text-sm"><b>How to read this:</b> each dot is one cell; UMAP places cells with similar measured expression near each other. Cluster colours are computational groups, not identities. “Highest expression” means abundant within a cluster; “ranked markers” means enriched versus all other cells. Neither alone proves identity.</div>
 
 <div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[24rem_1fr]">
@@ -519,7 +551,7 @@ async function init(){data=await get('/api/umap')
  get('/api/genes').then(g=>{$('geneList').innerHTML=g.genes.map(x=>`<option value="${esc(x)}">`).join('')}).catch(e=>console.warn('Gene list unavailable',e))}
 
 document.addEventListener('click',ev=>{const add=ev.target.closest('.add-gene');if(add){addDotGene(add.dataset.gene);return}const link=ev.target.closest('.gene-link');if(link)clickGene(link.dataset.gene)})
-document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>showTab(b.dataset.tab))
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));document.querySelectorAll('[data-goto]').forEach(b=>b.onclick=()=>showTab(b.dataset.goto))
 $('colourMode').onchange=()=>{$('geneControls').hidden=$('colourMode').value!=='gene';showErr('colourErr')}
 $('colourBtn').onclick=apply;$('gene').onkeydown=e=>{if(e.key==='Enter')apply()}
 $('findBtn').onclick=findCell;$('cellId').onkeydown=e=>{if(e.key==='Enter')findCell()}
