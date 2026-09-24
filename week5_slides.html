@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Junk or Signal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+:root {
+  color-scheme: light;
+  --ground: #e9edf0;
+  --paper: #fbfcfc;
+  --ink: #16222b;
+  --muted: #56646e;
+  --rule: #d3dadf;
+  --tint: #f0f3f5;
+  --c6: #b5344a;      /* cluster 6 */
+  --c6-soft: #f7e6e9;
+  --c7: #2c5f8a;      /* cluster 7 */
+  --c7-soft: #e3edf5;
+  --ok: #2f6b4f;
+  --ok-soft: #e2efe8;
+  --warn: #8a5a12;
+  --warn-soft: #f6ecd9;
+  --display: "IBM Plex Sans Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ground: #0d1318; --paper: #151e25; --ink: #e5ebef; --muted: #9aa8b2;
+    --rule: #2b3842; --tint: #1b262e;
+    --c6: #ec7d8f; --c6-soft: #3a1f26; --c7: #7db3e0; --c7-soft: #1a2c3c;
+    --ok: #7cc6a0; --ok-soft: #1a3027; --warn: #e3b567; --warn-soft: #362a15;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: #0d1318; --paper: #151e25; --ink: #e5ebef; --muted: #9aa8b2;
+  --rule: #2b3842; --tint: #1b262e;
+  --c6: #ec7d8f; --c6-soft: #3a1f26; --c7: #7db3e0; --c7-soft: #1a2c3c;
+  --ok: #7cc6a0; --ok-soft: #1a3027; --warn: #e3b567; --warn-soft: #362a15;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 16px;
+  line-height: 1.42;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- deck (presenter) mode ---------- */
+.viewport {
+  position: fixed; inset: 0;
+  display: grid; place-items: center;
+  overflow: hidden;
+}
+.stage { width: 1280px; height: 720px; position: absolute; left: 50%; top: calc(50% - 16px); transform-origin: center center; transform: translate(-50%, -50%); }
+.slide {
+  position: absolute; inset: 0;
+  background: var(--paper);
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / .06), 0 12px 40px rgb(0 0 0 / .08);
+  padding: 44px 56px 40px;
+  display: flex; flex-direction: column; gap: 22px;
+  opacity: 0; visibility: hidden;
+  transition: opacity .25s ease;
+}
+.slide.active { opacity: 1; visibility: visible; }
+
+.nav {
+  position: fixed; right: 16px; bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  display: flex; gap: 6px; align-items: center;
+  font: 500 13px/1 var(--mono); color: var(--muted);
+}
+.nav button {
+  font: inherit; color: var(--ink);
+  background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+  padding: 7px 10px; cursor: pointer;
+}
+.nav button:hover { border-color: var(--muted); }
+.nav button:focus-visible { outline: 2px solid var(--c7); outline-offset: 2px; }
+.nav .count { padding: 0 6px; font-variant-numeric: tabular-nums; }
+
+/* ---------- slide furniture ---------- */
+.head { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; border-bottom: 1px solid var(--rule); padding-bottom: 14px; }
+.eyebrow { font: 500 12px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1, h2 { font-family: var(--display); font-weight: 700; margin: 0; letter-spacing: -.01em; text-wrap: balance; }
+h1 { font-size: 38px; line-height: 1.05; }
+h2 { font-size: 15px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+.meta { font: 400 12px/1.4 var(--mono); color: var(--muted); text-align: right; white-space: nowrap; }
+p { margin: 0; }
+.gene { font-family: var(--mono); font-size: .88em; background: var(--tint); padding: 0 4px; border-radius: 3px; white-space: nowrap; }
+.num { font-variant-numeric: tabular-nums; font-weight: 600; }
+.small { font-size: 13.5px; color: var(--muted); }
+.src { font: 400 11.5px/1.3 var(--mono); color: var(--muted); }
+.tag {
+  display: inline-block; font: 600 11.5px/1 var(--mono); letter-spacing: .04em;
+  padding: 4px 7px; border-radius: 3px; white-space: nowrap;
+}
+.tag.c6 { background: var(--c6-soft); color: var(--c6); }
+.tag.c7 { background: var(--c7-soft); color: var(--c7); }
+.tag.conf { background: var(--warn-soft); color: var(--warn); }
+.tag.ok { background: var(--ok-soft); color: var(--ok); }
+
+ul.plain { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+ul.plain li { padding-left: 14px; position: relative; }
+ul.plain li::before { content: ""; position: absolute; left: 0; top: .62em; width: 6px; height: 1px; background: var(--muted); }
+
+/* ---------- slide 1 ---------- */
+.s1 { display: grid; grid-template-columns: 1fr 1.18fr; gap: 40px; flex: 1; min-height: 0; }
+.col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--rule); border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+.facts div { background: var(--paper); padding: 10px 12px; }
+.facts b { display: block; font: 700 24px/1.1 var(--display); font-variant-numeric: tabular-nums; }
+.facts span { font-size: 12.5px; color: var(--muted); }
+.quote { border-left: 2px solid var(--rule); padding-left: 14px; font-style: italic; color: var(--ink); }
+.quote .src { font-style: normal; display: block; margin-top: 4px; }
+
+.decision { border: 1px solid var(--rule); border-radius: 4px; padding: 14px 16px; display: grid; gap: 8px; }
+.decision.c6 { border-top: 3px solid var(--c6); }
+.decision.c7 { border-top: 3px solid var(--c7); }
+.decision .row { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.decision .q { font-family: var(--display); font-weight: 600; font-size: 19px; line-height: 1.2; }
+.criteria { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 13.5px; }
+.criteria div { background: var(--tint); border-radius: 4px; padding: 9px 11px; }
+.criteria b { display: block; font-size: 12px; font-family: var(--mono); font-weight: 500; letter-spacing: .03em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+
+/* ---------- slide 2 ---------- */
+.s2 { display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; flex: 1; min-height: 0; }
+.steps { display: grid; gap: 0; }
+.step { display: grid; grid-template-columns: 172px 1fr; gap: 16px; padding: 11px 0; border-top: 1px solid var(--rule); }
+.step:first-child { border-top: 0; padding-top: 0; }
+.step .what { font-family: var(--display); font-weight: 600; font-size: 17px; line-height: 1.2; }
+.step .what .why { display: block; font-family: var(--body); font-weight: 400; font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+.step .found { font-size: 14.5px; }
+.checks { display: grid; gap: 10px; }
+.check { background: var(--tint); border-radius: 4px; padding: 11px 14px; font-size: 14.5px; }
+.check b { font-family: var(--display); font-weight: 600; font-size: 16.5px; display: block; margin-bottom: 2px; }
+.check.me { background: var(--paper); border: 1px dashed var(--muted); }
+table.mini { border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; margin-top: 6px; width: 100%; }
+table.mini th, table.mini td { text-align: left; padding: 3px 8px 3px 0; border-bottom: 1px solid var(--rule); }
+table.mini th { font: 500 11px/1.2 var(--mono); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+
+/* ---------- slide 3 ---------- */
+.verdicts { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.verdict { border-radius: 4px; padding: 14px 18px; display: grid; gap: 6px; }
+.verdict.c6 { background: var(--c6-soft); }
+.verdict.c7 { background: var(--c7-soft); }
+.verdict .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.verdict .call { font: 700 23px/1.15 var(--display); }
+.verdict.c6 .call { color: var(--c6); }
+.verdict.c7 .call { color: var(--c7); }
+.verdict p { font-size: 14px; }
+.limit { display: grid; grid-template-columns: 150px 1fr; gap: 16px; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding: 12px 0; align-items: baseline; }
+.limit .lbl { font: 700 19px/1.1 var(--display); }
+.limit p { font-size: 14.5px; }
+.ai { display: grid; grid-template-columns: 1fr 0.72fr 1.35fr; gap: 22px; flex: 1; min-height: 0; }
+.ai .who { font: 700 19px/1.1 var(--display); margin-bottom: 8px; display: flex; gap: 8px; align-items: baseline; }
+.ai .who .src { font-weight: 400; }
+.ai ul.plain { font-size: 13.5px; gap: 5px; }
+.ai .mine { border-left: 1px solid var(--rule); padding-left: 22px; }
+.ai .mine ul.plain { grid-template-columns: 1fr 1fr; column-gap: 18px; }
+
+/* ---------- reading mode (phones, narrow windows) ---------- */
+@media (max-width: 860px), (max-height: 420px) {
+  .viewport { position: static; display: block; padding: 16px; overflow: visible; }
+  .stage { position: static; width: auto; height: auto; transform: none !important; display: grid; gap: 16px; }
+  .slide { position: relative; inset: auto; opacity: 1; visibility: visible; padding: 22px 18px; }
+  .nav { display: none; }
+  .head { flex-direction: column; gap: 6px; }
+  .meta { text-align: left; white-space: normal; }
+  h1 { font-size: 28px; }
+  .s1, .s2, .verdicts, .ai, .criteria { grid-template-columns: 1fr; }
+  .ai .mine { border-left: 0; padding-left: 0; }
+  .ai .mine ul.plain { grid-template-columns: 1fr; }
+  .step, .limit { grid-template-columns: 1fr; gap: 4px; }
+  .facts { grid-template-columns: repeat(2, 1fr); }
+  table.mini { display: block; overflow-x: auto; }
+}
+@media (prefers-reduced-motion: reduce) { .slide { transition: none; } }
+</style>
+</head>
+<body>
+<div class="viewport">
+<div class="stage" id="stage">
+
+<!-- ============ SLIDE 1 ============ -->
+<section class="slide active" aria-label="Slide 1 of 3">
+  <div class="head">
+    <div>
+      <div class="eyebrow">DDLS 2026 · Week 5 · Junk or signal?</div>
+      <h1>A PBMC dataset, two tiny clusters, two decisions</h1>
+    </div>
+    <div class="meta">Sammi Baudin<br>Data owner: Dr. Ravi Menon, immunologist</div>
+  </div>
+
+  <div class="s1">
+    <div class="col">
+      <div>
+        <h2>The data</h2>
+        <div class="facts">
+          <div><b>2,700</b><span>human PBMCs (cells)</span></div>
+          <div><b>13,714</b><span>genes</span></div>
+          <div><b>8</b><span>clusters, 0–7 (<span class="gene">leiden</span>)</span></div>
+        </div>
+      </div>
+      <ul class="plain">
+        <li><b>PBMC</b> = peripheral blood mononuclear cells: mainly lymphocytes and monocytes isolated from blood.</li>
+        <li>Blood collected in a university hospital lab. The core facility isolated the cells, ran single-cell RNA-seq and returned a <b>processed</b> file: clusters, a 2-D map (UMAP) and summary numbers.</li>
+        <li>The file holds log-normalised expression, raw UMI counts and per-cell quality fields (<span class="gene">n_genes</span>, <span class="gene">total_counts</span>, <span class="gene">pct_mito</span>).</li>
+        <li>No methods sheet was provided. The owner did not know the file's layout, what processing had been done, or whether the “genes/cell” summary was a mean or a median.</li>
+      </ul>
+      <p class="quote">The owner trusts the facility's numbers most and the biological meaning of the numbered groups least, <b>because nobody has identified them</b>.<span class="src">— interview, paraphrased</span></p>
+    </div>
+
+    <div class="col">
+      <h2 style="margin-bottom:-8px">Why the question matters: cleaning up before a figure</h2>
+      <div class="decision c6">
+        <div class="row"><span class="tag c6">CLUSTER 6</span><span class="small">13 cells · ~350 genes/cell · 1.6% mito</span></div>
+        <div class="q">“Is it safe to delete?”</div>
+        <p class="small">He was about to bin it as dead cells or empty droplets, based only on the low gene count, without looking at what the cells express.</p>
+      </div>
+      <div class="decision c7">
+        <div class="row"><span class="tag c7">CLUSTER 7</span><span class="small">10 cells · ~2,363 genes/cell</span></div>
+        <div class="q">“Should the next sequencing run go to this cluster?”</div>
+        <p class="small">That spends facility time and budget. <b>Yes</b> only if the cluster has a clear, likely blood-cell identity (T, B, NK or monocyte); otherwise leave it out of the figure.</p>
+      </div>
+      <div class="criteria">
+        <div><b>Coherent</b>Several genes from the same lineage across most cells, e.g. <span class="gene">CD3D/E</span> + <span class="gene">TRBC</span></div>
+        <div><b>Mixed</b>Strong programmes that don't fit together in the same cells, e.g. T-cell and monocyte</div>
+        <div><b>Generic / junk</b>Mostly mitochondrial, ribosomal, housekeeping or stress genes</div>
+      </div>
+      <p class="src">Owner's marker clues: T <span class="gene">CD3D CD3E TRBC</span> · B <span class="gene">MS4A1 CD79A</span> · NK <span class="gene">NKG7 GNLY</span> · Mono <span class="gene">LYZ LST1</span> · Platelet contamination <span class="gene">PPBP PF4</span></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SLIDE 2 ============ -->
+<section class="slide" aria-label="Slide 2 of 3">
+  <div class="head">
+    <div>
+      <div class="eyebrow">What was analysed, and how it was checked</div>
+      <h1>Looking at what the cells express, not only the summary</h1>
+    </div>
+    <div class="meta">Clusters and UMAP came from the facility<br>and were not changed</div>
+  </div>
+
+  <div class="s2">
+    <div>
+      <h2>Analyses: why each one, and what it showed</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="what">Inspect the file<span class="why">The owner didn't know the layout</span></div>
+          <div class="found">Rows are cells, columns are genes. <span class="num">0</span> missing values and <span class="num">0</span> duplicate cells. Raw counts are kept in a separate layer.</div>
+        </div>
+        <div class="step">
+          <div class="what">Per-cell quality<span class="why">The “350 genes” is a summary figure</span></div>
+          <div class="found"><span class="tag c6">6</span> The median is 350 genes, but the range runs from <span class="num">212</span> to <span class="num">2,455</span>, with one cell at 8,931 counts. Mito <span class="num">0.7–3.2%</span>, which is not high.</div>
+        </div>
+        <div class="step">
+          <div class="what">Marker ranking<span class="why">The owner asked for “top genes”; Wilcoxon, cluster vs rest</span></div>
+          <div class="found"><span class="tag c6">6</span> <span class="gene">PPBP</span> <span class="gene">PF4</span> are in the top 4, which is the owner's platelet clue.<br><span class="tag c7">7</span> <span class="gene">ACTG1</span> <span class="gene">GAPDH</span> <span class="gene">STMN1</span> <span class="gene">PCNA</span> are not lineage markers.</div>
+        </div>
+        <div class="step">
+          <div class="what">Owner's marker programmes<span class="why">Checks the coherent vs mixed criterion, cell by cell</span></div>
+          <div class="found"><span class="tag c7">7</span> positive cells: T <span class="num">8/10</span> · B <span class="num">10/10</span> · NK <span class="num">9/10</span> · Mono <span class="num">10/10</span>, so the programmes overlap.<br><span class="tag c6">6</span> Mono <span class="num">7/13</span>; T, B and NK each <span class="num">≤3/13</span>.</div>
+        </div>
+        <div class="step">
+          <div class="what">Evidence navigator app<span class="why">So the owner can see the evidence directly</span></div>
+          <div class="found">A FastAPI + Scanpy app showing the UMAP, a gene lookup, marker lists, a dot plot, and stability and doublet summaries. <b>I demo it after the slides.</b></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <h2>Validation</h2>
+      <div class="checks">
+        <div class="check me"><b>I caught a broken result</b>The first marker ranking gave every gene a score of 0.00 and the same list for clusters 6 and 7. I had it redone.</div>
+        <div class="check"><b>Independent reclustering from raw counts</b>Fresh normalisation, PCA, neighbour graph and Leiden at 4 resolutions. Mean cluster purity was <span class="num">0.95–0.98</span>.</div>
+        <div class="check"><b>Stability: 27 runs</b>3 seeds × 3 neighbour settings × 3 resolutions. How often each cell stays with its own cluster:
+          <table class="mini">
+            <tr><th>Cluster</th><th>Cells</th><th>Median</th><th>Min</th></tr>
+            <tr><td><span class="tag c6">6</span></td><td>13</td><td>0.98</td><td>0.74</td></tr>
+            <tr><td><span class="tag c7">7</span></td><td>10</td><td>0.79</td><td>0.21</td></tr>
+          </table>
+        </div>
+        <div class="check"><b>Raw-count doublet screen</b>Cluster 7 has a median of <span class="num">8,499</span> raw counts, against 1,759–5,293 in clusters 0–5, and <span class="num">8/10</span> of its cells show more than one programme. Cluster 6: <span class="num">4/13</span>.</div>
+        <div class="check me"><b>Where each piece of knowledge came from</b>I asked the agent where its biology came from, then had every report split into <i>dataset</i>, <i>transcript</i> and <i>model pretrained</i> knowledge.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SLIDE 3 ============ -->
+<section class="slide" aria-label="Slide 3 of 3">
+  <div class="head">
+    <div>
+      <div class="eyebrow">Answer · limit · who did what</div>
+      <h1>The answers, one honest limit, and how the work was split</h1>
+    </div>
+    <div class="meta">Confidence is stated first<br>(project rule)</div>
+  </div>
+
+  <div class="verdicts">
+    <div class="verdict c6">
+      <div class="row"><span class="tag c6">CLUSTER 6</span><span class="tag conf">CONFIDENCE: MODERATE</span></div>
+      <div class="call">Don't delete. Keep it for review.</div>
+      <p>It is not blank: the cells differ from each other, one cell has high depth, and the top markers <span class="gene">PPBP</span>/<span class="gene">PF4</span> match the owner's own platelet-contamination clue. What the cells are is still unresolved.</p>
+    </div>
+    <div class="verdict c7">
+      <div class="row"><span class="tag c7">CLUSTER 7</span><span class="tag conf">CONFIDENCE: LOW–MODERATE</span></div>
+      <div class="call">No. Don't prioritise the next run.</div>
+      <p>Its depth is high, but the T, B, NK and monocyte programmes overlap in the same cells, and the top markers are generic. This fits the owner's definition of “mixed or uninformative”.</p>
+    </div>
+  </div>
+
+  <div class="limit">
+    <div class="lbl">One honest limit</div>
+    <p>Both answers rest on <b>10 and 13 cells</b>. Cluster 7 is the least stable cluster (some cells stay with it in only 21% of runs), and my doublet flag is a screening rule, not a validated classifier. So this is enough evidence to <i>hold back</i> a decision, but not enough to name either cluster's identity.</p>
+  </div>
+
+  <div class="ai">
+    <div>
+      <div class="who">Pi <span class="src">coding agent</span></div>
+      <ul class="plain">
+        <li>Drafted <span class="gene">AGENTS.md</span> and <span class="gene">spec.md</span> from my interview transcript</li>
+        <li>Set up the <span class="gene">uv</span> environment; wrote all 7 analysis scripts</li>
+        <li>Built the FastAPI/Scanpy navigator and made the git commits</li>
+        <li>Proposed the plan, annotation, reclustering and stability designs; I approved them step by step</li>
+      </ul>
+    </div>
+    <div>
+      <div class="who">Claude <span class="src">Claude Code</span></div>
+      <ul class="plain">
+        <li>Built this slide deck from the existing transcripts and result files</li>
+        <li>No new analysis</li>
+      </ul>
+    </div>
+    <div class="mine">
+      <div class="who">Me</div>
+      <ul class="plain">
+        <li>Ran the owner interview and pinned down “coherent”, “mixed” and “junk”</li>
+        <li>Set the rules: confidence first, reviewable scripts, commit often</li>
+        <li>Asked for a plan first and ran it in stages</li>
+        <li>Caught the 0.00-score ranking bug</li>
+        <li>Challenged unsourced biology, which led to the provenance split</li>
+        <li>Asked whether cluster-vs-rest ranking is standard practice</li>
+        <li>Chose 3 seeds to keep compute low</li>
+        <li>Asked for the raw-count doublet check</li>
+        <li>Designed the app layout and swapped the heatmap for a dot plot</li>
+        <li>Checked that <span class="gene">.env</span> was never committed</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+</div>
+
+<nav class="nav" aria-label="Slide navigation">
+  <button type="button" id="prev" aria-label="Previous slide">←</button>
+  <span class="count" id="count">1 / 3</span>
+  <button type="button" id="next" aria-label="Next slide">→</button>
+  <button type="button" id="fs" aria-label="Toggle fullscreen">⛶</button>
+</nav>
+
+<script>
+(function () {
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var stage = document.getElementById('stage');
+  var count = document.getElementById('count');
+  var i = 0;
+  var start = parseInt((location.hash || '').replace('#', ''), 10);
+  if (start >= 1 && start <= slides.length) i = start - 1;
+
+  function show(n) {
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach(function (s, k) { s.classList.toggle('active', k === i); });
+    count.textContent = (i + 1) + ' / ' + slides.length;
+  }
+  function fit() {
+    var s = Math.min((window.innerWidth - 32) / 1280, (window.innerHeight - 64) / 720);
+    stage.style.transform = 'translate(-50%, -50%) scale(' + Math.max(s, 0.1) + ')';
+  }
+  document.getElementById('prev').addEventListener('click', function () { show(i - 1); });
+  document.getElementById('next').addEventListener('click', function () { show(i + 1); });
+  document.getElementById('fs').addEventListener('click', function () {
+    try {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen().catch(function () {});
+    } catch (e) {}
+  });
+  document.addEventListener('keydown', function (e) {
+    if (['ArrowRight', 'PageDown', ' '].indexOf(e.key) > -1) { e.preventDefault(); show(i + 1); }
+    if (['ArrowLeft', 'PageUp'].indexOf(e.key) > -1) { e.preventDefault(); show(i - 1); }
+    if (e.key === 'Home') show(0);
+    if (e.key === 'End') show(slides.length - 1);
+    if (e.key === 'f') document.getElementById('fs').click();
+  });
+  window.addEventListener('resize', fit);
+  fit(); show(i);
+})();
+</script>
+</body>
+</html>
