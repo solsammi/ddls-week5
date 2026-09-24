@@ -10,6 +10,10 @@ No new analyses were added. Version 2 only surfaces results that already exist i
 - **Colour by per-cell clustering stability:** a new "Colour map by" option shows how often each cell stayed with its original cluster across the 27 stability runs.
 - **Doublet card read from results:** the doublet-screening card now reads `results/doublet_cluster_summary.csv` instead of fixed text.
 - **Updated decision text for clusters 6 and 7:** matches the seminar slides, with confidence stated for each.
+- **Layout:** a decision strip at the top shows the verdict and confidence for clusters 6 and 7 (click one to jump to its evidence). The page is split into three tabs: **Explore**, **Clusters 6 & 7** (side-by-side comparison of any two clusters) and **Validation** (stability, doublet screen, annotations, limitations). On wide screens the map stays in view while you scroll the cluster card.
+- **Dot plot of all clusters:** marker genes on the x-axis, all 8 clusters on the y-axis, one shared colour scale, programme bands above the genes, and the selected cluster's row highlighted. It now includes the owner's dendritic-cell-like (`FCER1A`, `CST3`) and platelet-contamination (`PPBP`, `PF4`) clues. Genes can be added to or reset in the plot. Clicking a dot colours the map by that gene.
+- **More interaction:** click any gene name to colour the map by it; **+** adds a gene to the dot plot; gene autocomplete; selecting a cluster keeps the current colouring and greys out the rest; a toggle marks cluster 7's 2 loosely attached cells; hovering a dot shows its quality values; the lasso tool summarises a group of cells (count, cluster mix, median quality values); errors are shown inline instead of pop-ups.
+- **Annotation table:** shows clusters 6 and 7 by default, with a "Show all clusters" toggle.
 - **Faster marker lists:** the Wilcoxon cluster-versus-rest ranking is computed once for all clusters at startup instead of on each first click. Scores are identical to version 1; genes with exactly tied scores may appear in a different order.
 
 
@@ -25,7 +29,7 @@ A small FastAPI and Scanpy application for exploring the supplied processed PBMC
 - Shows two distinct gene lists for a selected cluster:
   - **Highest average expression:** genes with the highest mean log-normalised expression within that cluster.
   - **Ranked marker genes:** genes ranked by Wilcoxon comparison of the selected cluster against all other cells.
-- Shows owner-supplied marker programmes for T cells, B cells, NK cells, monocytes, dendritic-cell-like cells, and platelet contamination clues.
+- Shows owner-supplied marker programmes for T cells, B cells, NK cells, monocytes, dendritic-cell-like cells, and platelet contamination clues (the last two were added to the programmes and dot plot in v2).
 - Shows a size-stable expression dot plot and table. Dot colour represents mean expression; dot size represents the percentage of cells expressing the gene.
 - Shows clustering-stability results from 27 validation runs and a raw-count doublet-screening summary.
 - Shows provisional annotations with separate columns for dataset-derived observations, transcript-derived knowledge, and model pretrained biological knowledge.
@@ -89,7 +93,9 @@ kill <PID>
 
 ## API endpoints
 
-- `GET /api/umap` — coordinates, cluster labels, and cell identifiers.
+- `GET /api/umap` — coordinates, cluster labels, cell identifiers, and per-cell quality values for hover (quality values new in v2).
+- `GET /api/genes` — all gene names, for autocomplete (new in v2).
+- `GET /api/dotplot?genes=A,B` — mean expression and % positive cells per cluster; defaults to the owner-supplied marker clues (new in v2).
 - `GET /api/gene/{gene}` — expression values for a gene across cells.
 - `GET /api/quality/{field}` — values for `n_genes`, `total_counts`, or `pct_mito`.
 - `GET /api/clusters/{cluster}/genes` — highest average expression and ranked markers.
