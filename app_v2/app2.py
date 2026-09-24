@@ -25,6 +25,8 @@ MARKERS = {
     "B-cell": ["MS4A1", "CD79A", "CD37"],
     "NK-cell": ["NKG7", "GNLY", "KLRD1"],
     "Monocyte": ["LYZ", "LST1", "S100A8", "S100A9"],
+    "Dendritic-cell-like": ["FCER1A", "CST3"],
+    "Platelet clue": ["PPBP", "PF4"],
 }
 
 
@@ -129,7 +131,33 @@ def nearest_cell_ids(ids: Any, cell_id: str, n: int = 3) -> list[str]:
 def umap(request: Request):
     ad = dataset(request)
     coords = np.asarray(ad.obsm["X_umap"])
-    return {"x": coords[:, 0].tolist(), "y": coords[:, 1].tolist(), "cluster": ad.obs["leiden"].astype(str).tolist(), "cell_id": [str(x) for x in ad.obs_names]}
+    quality = {f: [json_value(v) for v in ad.obs[f].to_numpy()] for f in ("n_genes", "total_counts", "pct_mito") if f in ad.obs}
+    return {"x": coords[:, 0].tolist(), "y": coords[:, 1].tolist(), "cluster": ad.obs["leiden"].astype(str).tolist(), "cell_id": [str(x) for x in ad.obs_names], **quality}
+
+
+@app.get("/api/genes")
+def gene_names(request: Request):
+    return {"genes": [str(g) for g in dataset(request).var_names]}
+
+
+@app.get("/api/dotplot")
+def dotplot(request: Request, genes: str | None = Query(None)):
+    """Mean log-normalised expression and % positive cells per cluster for a gene list (defaults to the owner's marker clues)."""
+    ad = dataset(request)
+    programme_by_gene = {gene: programme for programme, gene_list in MARKERS.items() for gene in gene_list}
+    requested = [g.strip() for g in genes.split(",") if g.strip()] if genes else list(programme_by_gene)
+    requested = list(dict.fromkeys(requested))
+    present = [g for g in requested if g in ad.var_names]
+    unknown = [g for g in requested if g not in ad.var_names and g not in programme_by_gene]
+    if not present:
+        raise HTTPException(404, "None of the requested genes are in the dataset")
+    matrix = ad[:, present].X
+    matrix = matrix.toarray() if hasattr(matrix, "toarray") else np.asarray(matrix)
+    labels = ad.obs["leiden"].astype(str).to_numpy()
+    clusters = sorted(set(labels), key=int)
+    mean = [matrix[labels == c].mean(axis=0).tolist() for c in clusters]
+    pct = [((matrix[labels == c] > 0).mean(axis=0) * 100).tolist() for c in clusters]
+    return {"genes": [{"gene": g, "programme": programme_by_gene.get(g, "Added")} for g in present], "clusters": clusters, "mean": mean, "pct": pct, "max_mean": float(max(max(row) for row in mean)), "unknown": unknown}
 
 
 @app.get("/api/gene/{gene}")
@@ -255,19 +283,255 @@ def report_csv(cluster: str, request: Request):
     return StreamingResponse(iter([output.getvalue()]), media_type="text/csv", headers={"Content-Disposition": f'attachment; filename="cluster-{cluster}-report.csv"'})
 
 
-HTML = r'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PBMC evidence viewer v2</title><script src="https://cdn.tailwindcss.com"></script><script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script></head><body class="bg-[#fcfaf5] text-[#3f3a34]"><main class="mx-auto max-w-7xl p-4 sm:p-6"><header><h1 class="text-3xl font-bold">PBMC evidence viewer <span class="text-base font-normal text-slate-500">v2</span></h1><p class="mt-1 text-slate-600">Explore computational clusters without treating them as cell-type labels.</p></header><section class="mt-4 rounded-xl border border-[#d7e4da] bg-[#f1f7f2] p-4 text-sm"><b>How to read this:</b> each dot is one cell; UMAP places cells with similar measured expression near each other. Cluster colours are computational groups, not identities. “Highest expression” means abundant within a cluster; “ranked markers” means enriched versus all other cells. Neither alone proves identity.</section><div class="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-[18rem_1fr]"><aside class="rounded-xl bg-[#fffefa] p-4 shadow-sm"><h2 class="font-semibold">Select a cluster</h2><div id="clusterButtons" class="mt-2 grid grid-cols-2 gap-2"></div><button id="resetBtn" class="mt-3 w-full rounded border px-3 py-2 text-sm">Show all clusters</button><hr class="my-4"><label class="text-sm font-medium">Colour map by</label><div class="mt-2 flex gap-2"><select id="colourMode" class="min-w-0 flex-1 rounded border p-2"><option value="cluster">Cluster</option><option value="gene">Gene</option><option value="n_genes">Genes detected</option><option value="total_counts">Total counts</option><option value="pct_mito">Mitochondrial %</option><option value="stability">Clustering stability (per cell)</option></select><button id="colourBtn" class="rounded bg-blue-600 px-3 py-2 text-white">Apply</button></div><div id="geneControls" class="mt-2 hidden"><input id="gene" class="w-full rounded border p-2" placeholder="e.g. CD3D" list="genes"><datalist id="genes"></datalist></div><hr class="my-4"><label for="cellId" class="text-sm font-medium">Find a cell</label><div class="mt-2 flex gap-2"><input id="cellId" class="min-w-0 flex-1 rounded border p-2 text-sm" placeholder="e.g. CACAGAACCCTTGC-1"><button id="findBtn" class="rounded bg-blue-600 px-3 py-2 text-white">Find</button></div><p class="mt-1 text-xs text-slate-500">Or click any dot on the map.</p><div id="cellCard" class="mt-2 hidden rounded bg-slate-50 p-2 text-xs leading-relaxed"></div><p class="mt-4 text-xs text-slate-500">Markers and decisions are shown with their evidence source and confidence.</p></aside><div class="min-w-0"><div class="rounded-xl bg-[#fffefa] p-2 shadow-sm"><div id="plot" class="h-[60vh] min-h-[28rem] w-full"></div></div></div><section id="card" class="col-span-1 mt-0 hidden w-full rounded-xl bg-white p-4 shadow-sm lg:col-span-2"><div class="flex flex-wrap items-start justify-between gap-2"><div><h2 id="title" class="text-2xl font-bold"></h2><p id="quality" class="text-sm text-slate-600"></p></div><a id="download" class="rounded bg-slate-800 px-3 py-2 text-sm text-white" download>Download CSV</a></div><div id="decision" class="mt-3 rounded border-l-4 p-3 text-sm"></div><p id="confidence" class="mt-2 text-sm"></p><div class="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-2"><div class="rounded border p-3"><h3 class="font-semibold">Highest average expression</h3><p class="text-xs text-slate-500">DATASET-DERIVED: within-cluster mean log-normalised expression.</p><p class="mt-2 rounded bg-blue-50 p-2 text-xs text-slate-700"><b>Question answered:</b> Which genes have the highest average expression within this cluster?</p><ul id="average" class="mt-2 divide-y text-sm"></ul></div><div class="rounded border p-3"><h3 class="font-semibold">Ranked marker genes</h3><p class="text-xs text-slate-500">DATASET-DERIVED: Wilcoxon ranking versus all other cells.</p><p class="mt-2 rounded bg-blue-50 p-2 text-xs text-slate-700"><b>Question answered:</b> Which genes distinguish this cluster from all other cells?</p><ul id="markers" class="mt-2 divide-y text-sm"></ul></div></div><div class="mt-4"><h3 class="font-semibold">Owner-supplied marker programmes</h3><p class="text-xs text-slate-500">TRANSCRIPT-DERIVED marker clues; presence is not proof of identity.</p><div id="programmes" class="mt-2 grid gap-2 sm:grid-cols-2"></div></div><div class="mt-4 rounded border p-3"><h3 class="font-semibold">Marker expression summary</h3><p class="text-xs text-slate-500">DATASET-DERIVED: dot colour shows mean log-normalised expression; dot size shows the percentage of cells expressing the gene. This is stable across cluster sizes.</p><div id="dotplot" class="h-[30rem] w-full"></div><div class="mt-3 overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr class="border-b"><th class="p-2">Gene</th><th class="p-2">Programme</th><th class="p-2">Mean</th><th class="p-2">Median</th><th class="p-2">Cells positive</th></tr></thead><tbody id="expressionTable"></tbody></table></div></div><details class="mt-4 text-sm"><summary class="cursor-pointer font-semibold">Limitations and provenance</summary><div class="mt-2 space-y-2 text-slate-600"><p><b>Dataset-derived:</b> expression, quality, clusters, UMAP, and rankings.</p><p><b>Transcript-derived:</b> owner goals, supplied marker examples, and decision criteria.</p><p><b>Model knowledge:</b> biological annotations not explicitly in the transcript are not used as established evidence.</p><p>Clusters 6 and 7 contain only 13 and 10 cells. UMAP is a projection, not a measurement. There is no universal mitochondrial cutoff supplied here. Marker rankings do not prove identity.</p></div></details></section><section id="stabilityCard" class="col-span-1 mt-4 w-full rounded-xl bg-white p-4 shadow-sm lg:col-span-2"><h2 class="text-xl font-bold">Clustering stability & doublet screening</h2><p id="stabilityMethod" class="mt-1 text-xs text-slate-500"></p><div class="mt-3 overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr class="border-b"><th class="p-2">Cluster</th><th class="p-2">Cells</th><th class="p-2">Median stability</th><th class="p-2">Range</th></tr></thead><tbody id="stabilityRows"></tbody></table></div><div class="mt-3 grid gap-2 sm:grid-cols-2"><div class="rounded bg-amber-50 p-3 text-sm"><b>Cluster 6:</b> Computationally stable; this does not establish identity or deletion safety.</div><div class="rounded bg-blue-50 p-3 text-sm"><b>Cluster 7:</b> Less stable; some cells are sensitive to settings, so treat its boundary cautiously.</div></div><p class="mt-3 text-xs text-slate-500">DATASET-DERIVED stability scores. Conclusions are computational observations, not cell-type annotations.</p><div class="mt-4 border-t pt-4"><h3 class="font-semibold">Doublet screening summary</h3><p id="doubletMethod" class="mt-1 text-xs text-slate-500"></p><div id="doubletRows" class="mt-2 grid gap-2 sm:grid-cols-2"></div><p class="mt-2 text-xs text-slate-500">Screening flags are not doublet diagnoses. They use raw counts and marker co-expression; dedicated validation such as Scrublet would be needed for stronger evidence.</p></div></section><section id="annotationCard" class="col-span-1 mt-4 w-full rounded-xl bg-white p-4 shadow-sm lg:col-span-2"><h2 class="text-xl font-bold">Provisional cluster annotations</h2><p class="mt-1 text-xs text-slate-500">Dataset observations, transcript-supported interpretation, and model biological knowledge are kept in separate columns.</p><div class="mt-3 overflow-x-auto"><table class="w-full min-w-[70rem] text-left text-sm"><thead><tr class="border-b"><th class="p-2">Cluster</th><th class="p-2">Suggested label</th><th class="p-2">Confidence</th><th class="p-2">Dataset-derived</th><th class="p-2">Transcript-derived</th><th class="p-2">Model pretrained knowledge</th></tr></thead><tbody id="annotationRows"></tbody></table></div></section></div></main><script>
-let data;const colors=['#3b82c4','#d6534f','#45a85a','#8956b8','#e58a2b','#168fa3','#d04482','#829b32'];const cmap=Object.fromEntries(colors.map((x,i)=>[String(i),x]));
-const $=id=>document.getElementById(id);async function get(url){const r=await fetch(url);if(!r.ok)throw Error((await r.json()).detail||r.statusText);return r.json()}
-let hl=null,last=[null,null,'Cluster'];function plot(selected=null,values=null,label='Cluster'){last=[selected,values,label];const c=values||data.cluster.map(x=>selected===null?cmap[x]:x===selected?cmap[x]:'#cbd5e1');const traces=[{x:data.x,y:data.y,mode:'markers',type:'scattergl',text:data.cell_id,customdata:data.cluster,marker:{size:7,color:c,colorscale:'Viridis',showscale:!!values,colorbar:{title:label}},hovertemplate:'cell %{text}<br>cluster %{customdata}<extra></extra>'}];if(hl)traces.push({x:[hl.x],y:[hl.y],mode:'markers',type:'scatter',marker:{size:20,color:'rgba(0,0,0,0)',line:{color:'#111827',width:3}},hovertemplate:'cell '+hl.id+'<extra></extra>'});Plotly.react('plot',traces,{margin:{l:45,r:15,t:15,b:45},xaxis:{title:'UMAP 1'},yaxis:{title:'UMAP 2'},dragmode:'pan',showlegend:false});}
-async function findCell(){const id=$('cellId').value.trim();if(!id)return;const card=$('cellCard');card.classList.remove('hidden');try{const d=await get('/api/cell/'+encodeURIComponent(id));hl={id:d.cell_id,x:d.umap.x,y:d.umap.y};plot(...last);const q=d.quality,s=d.stability,r=d.raw_count_screen;card.innerHTML=`<b>${d.cell_id}</b><br>Cluster ${d.cluster} · UMAP (${d.umap.x.toFixed(2)}, ${d.umap.y.toFixed(2)})<br>${q.n_genes} genes · ${Math.round(q.total_counts).toLocaleString()} counts · ${q.pct_mito.toFixed(1)}% mito`+(s?`<br>Stays with its own cluster in ${Math.round(100*s.same_original_cocluster_frequency)}% of the 27 stability runs`:'')+(r?`<br>Raw-count screen: ${r.possible_mixed_programmes?'flagged as possibly mixed':'not flagged'} (${r.n_strong_programmes} marker programme${r.n_strong_programmes==1?'':'s'})`:'')+`<br><button id="clearCell" class="mt-1 underline">Clear</button>`;$('clearCell').onclick=()=>{hl=null;plot(...last);card.classList.add('hidden')}}catch(e){card.textContent=e.message}}
-function decisions(c){if(c==='6')return ['Do not delete.','All 13 cells express PPBP and PF4 in raw counts, the owner\'s platelet-contamination clue, and the mitochondrial share is low (0.7–3.2%). The cells have low depth but are not blank. What they are is unresolved.','Moderate–high that this is a real, separate group rather than dead or empty material; low for what the cells are.'];if(c==='7')return ['Do not prioritise for the next sequencing run.','The T, B, NK and monocyte programmes overlap in the same cells and the top markers are generic. The cluster is an 8-cell core plus 2 loosely attached cells that group with cluster 0 at 3 of 4 reclustering resolutions.','Low–moderate for the recommendation; moderate for the 8 + 2 structure.'];return ['Exploratory view.','No owner decision is assigned to this cluster.','Not assessed.']}
-async function select(c){plot(c);const [g,q,p,e]=await Promise.all([get(`/api/clusters/${c}/genes?n_genes=10`),get(`/api/clusters/${c}/quality`),get(`/api/clusters/${c}/programmes`),get(`/api/expression-summary/${c}`)]);$('card').classList.remove('hidden');$('title').textContent='Cluster '+c;$('quality').textContent=`${q.n_cells} cells · n_genes median ${q.quality.n_genes.median} · total counts median ${q.quality.total_counts.median} · pct_mito median ${q.quality.pct_mito.median.toFixed(2)}%`;$('average').innerHTML=g.average_expression.map(x=>`<li class="flex justify-between py-1"><span>${x.gene}</span><span>${x.value.toFixed(3)}</span></li>`).join('');$('markers').innerHTML=g.markers.map(x=>`<li class="flex justify-between py-1"><span>${x.gene}</span><span>${x.score.toFixed(3)}</span></li>`).join('');$('programmes').innerHTML=p.programmes.map(x=>`<div class="rounded bg-slate-50 p-2 text-sm"><b>${x.programme}</b>: ${x.positive_cells}/${x.n_cells} cells<br><span class="text-xs text-slate-500">${x.genes.join(', ')}</span></div>`).join('');const d=decisions(c);$('decision').textContent=d[0]+' '+d[1];$('decision').className='mt-3 rounded border-l-4 p-3 text-sm '+(c==='6'?'border-amber-500 bg-amber-50':'border-blue-500 bg-blue-50');$('confidence').textContent='Confidence: '+d[2];$('download').href=`/api/report/${c}.csv`;$('expressionTable').innerHTML=e.genes.map(x=>`<tr class="border-b"><td class="p-2 font-medium">${x.gene}</td><td class="p-2">${x.programme}</td><td class="p-2">${x.mean.toFixed(3)}</td><td class="p-2">${x.median.toFixed(3)}</td><td class="p-2">${x.pct_positive.toFixed(1)}%</td></tr>`).join('');const maxMean=Math.max(...e.genes.map(x=>x.mean),1);Plotly.react('dotplot',[{x:e.genes.map(x=>x.programme),y:e.genes.map(x=>x.gene),mode:'markers',type:'scatter',marker:{size:e.genes.map(x=>8+28*x.pct_positive/100),color:e.genes.map(x=>x.mean),colorscale:'Viridis',cmin:0,cmax:maxMean,colorbar:{title:'Mean expression'}},customdata:e.genes.map(x=>[x.mean,x.pct_positive]),hovertemplate:'%{y}<br>mean %{customdata[0]:.3f}<br>positive %{customdata[1]:.1f}%<extra></extra>'}],{margin:{l:90,r:20,t:10,b:50},xaxis:{title:'Owner-supplied programme'},yaxis:{title:'Gene',autorange:'reversed'},height:460})}
-async function apply(){try{const mode=$('colourMode').value;if(mode==='cluster'){plot();return}if(mode==='stability'){const d=await get('/api/stability/cells');plot(null,d.values,'Stability');return}if(mode==='gene'){const d=await get('/api/gene/'+encodeURIComponent($('gene').value.trim()));plot(null,d.values,$('gene').value.trim());return}const d=await get('/api/quality/'+mode);plot(null,d.values,mode)}catch(e){alert(e.message)}}
-async function loadAnnotations(){const a=await get('/api/annotations');$('annotationRows').innerHTML=a.rows.map(x=>`<tr class="border-b align-top"><td class="p-2 font-semibold">${x.cluster}</td><td class="p-2">${x.label}</td><td class="p-2">${x.confidence}</td><td class="p-2">${x.dataset}</td><td class="p-2">${x.transcript}</td><td class="p-2">${x.model}</td></tr>`).join('')}
-async function loadDoublets(){const d=await get('/api/doublets');$('doubletMethod').textContent=d.method;$('doubletRows').innerHTML=d.clusters.map(x=>`<div class="rounded bg-slate-50 p-3 text-sm"><b>Cluster ${x.cluster}</b> · ${x.n_cells} cells<br>Median raw counts ${Math.round(x.median_raw_counts).toLocaleString()} (max ${Math.round(x.max_raw_counts).toLocaleString()})<br>Cells with more than one marker programme: ${x.mixed_cells}/${x.n_cells}</div>`).join('')}
+HTML = r'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PBMC evidence viewer v2</title><script src="https://cdn.tailwindcss.com"></script><script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<style>
+.tab-btn{background:#fffefa}
+.tab-btn[aria-selected="true"]{background:#3f3a34;color:#fff;border-color:#3f3a34}
+.gene-link{cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+.gene-link:hover{color:#2563eb}
+.err{color:#b91c1c;font-size:.75rem;margin-top:.25rem}
+</style></head>
+<body class="bg-[#fcfaf5] text-[#3f3a34]"><main class="mx-auto max-w-7xl p-4 sm:p-6">
+
+<header><h1 class="text-3xl font-bold">PBMC evidence viewer <span class="text-base font-normal text-slate-500">v2</span></h1><p class="mt-1 text-slate-600">Explore computational clusters without treating them as cell-type labels.</p></header>
+
+<section id="decisionStrip" class="mt-4 grid gap-3 sm:grid-cols-2" aria-label="Decisions for clusters 6 and 7"></section>
+
+<nav class="mt-5 flex flex-wrap gap-2" role="tablist">
+<button class="tab-btn rounded-full border px-4 py-1.5 text-sm font-medium" role="tab" data-tab="explore" aria-selected="true">Explore</button>
+<button class="tab-btn rounded-full border px-4 py-1.5 text-sm font-medium" role="tab" data-tab="compare" aria-selected="false">Clusters 6 &amp; 7</button>
+<button class="tab-btn rounded-full border px-4 py-1.5 text-sm font-medium" role="tab" data-tab="validation" aria-selected="false">Validation</button>
+</nav>
+
+<!-- ================= EXPLORE ================= -->
+<section data-panel="explore" class="mt-4">
+<div class="rounded-xl border border-[#d7e4da] bg-[#f1f7f2] p-3 text-sm"><b>How to read this:</b> each dot is one cell; UMAP places cells with similar measured expression near each other. Cluster colours are computational groups, not identities. “Highest expression” means abundant within a cluster; “ranked markers” means enriched versus all other cells. Neither alone proves identity.</div>
+
+<div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[24rem_1fr]">
+<div class="flex min-w-0 flex-col gap-4">
+<div class="rounded-xl bg-[#fffefa] p-4 shadow-sm">
+<h2 class="font-semibold">Select a cluster</h2>
+<div id="clusterButtons" class="mt-2 grid grid-cols-4 gap-2"></div>
+<button id="resetBtn" class="mt-3 w-full rounded border px-3 py-2 text-sm">Show all clusters</button>
+<hr class="my-4">
+<label for="colourMode" class="text-sm font-medium">Colour map by</label>
+<div class="mt-2 flex gap-2"><select id="colourMode" class="min-w-0 flex-1 rounded border p-2"><option value="cluster">Cluster</option><option value="gene">Gene</option><option value="n_genes">Genes detected</option><option value="total_counts">Total counts</option><option value="pct_mito">Mitochondrial %</option><option value="stability">Clustering stability (per cell)</option></select><button id="colourBtn" class="rounded bg-blue-600 px-3 py-2 text-white">Apply</button></div>
+<div id="geneControls" hidden><input id="gene" class="mt-2 w-full rounded border p-2" placeholder="e.g. PPBP" list="geneList" autocomplete="off"></div>
+<p id="colourErr" class="err" hidden></p>
+<p class="mt-2 text-xs text-slate-500">Selecting a cluster keeps the current colouring and greys out the other clusters.</p>
+<label class="mt-3 flex items-center gap-2 text-sm"><input id="looseToggle" type="checkbox"> Mark cluster 7’s 2 loosely attached cells</label>
+<hr class="my-4">
+<label for="cellId" class="text-sm font-medium">Find a cell</label>
+<div class="mt-2 flex gap-2"><input id="cellId" class="min-w-0 flex-1 rounded border p-2 text-sm" placeholder="e.g. CACAGAACCCTTGC-1" autocomplete="off"><button id="findBtn" class="rounded bg-blue-600 px-3 py-2 text-white">Find</button></div>
+<p id="cellErr" class="err" hidden></p>
+<p class="mt-1 text-xs text-slate-500">Or click any dot on the map.</p>
+<div id="cellCard" class="mt-2 rounded bg-slate-50 p-2 text-xs leading-relaxed" hidden></div>
+</div>
+
+<div id="selectionCard" class="rounded-xl bg-white p-4 shadow-sm" hidden></div>
+
+<section id="card" class="rounded-xl bg-white p-4 shadow-sm" hidden>
+<div class="flex items-start justify-between gap-2"><div><h2 id="title" class="text-2xl font-bold"></h2><p id="quality" class="text-sm text-slate-600"></p></div><a id="download" class="shrink-0 rounded bg-slate-800 px-3 py-2 text-sm text-white" download>CSV</a></div>
+<div id="decision" class="mt-3 rounded border-l-4 bg-slate-50 p-3 text-sm"></div>
+<p id="confidence" class="mt-2 text-sm"></p>
+<p class="mt-3 text-xs text-slate-500">Click a gene to colour the map by it. <b>+</b> adds it to the dot plot.</p>
+<div class="mt-2 grid gap-3">
+<div class="rounded border p-3"><h3 class="font-semibold">Highest average expression</h3><p class="text-xs text-slate-500">DATASET-DERIVED: within-cluster mean log-normalised expression.</p><p class="mt-2 rounded bg-blue-50 p-2 text-xs text-slate-700"><b>Question answered:</b> Which genes have the highest average expression within this cluster?</p><ul id="average" class="mt-2 divide-y text-sm"></ul></div>
+<div class="rounded border p-3"><h3 class="font-semibold">Ranked marker genes</h3><p class="text-xs text-slate-500">DATASET-DERIVED: Wilcoxon ranking versus all other cells.</p><p class="mt-2 rounded bg-blue-50 p-2 text-xs text-slate-700"><b>Question answered:</b> Which genes distinguish this cluster from all other cells?</p><ul id="markers" class="mt-2 divide-y text-sm"></ul></div>
+</div>
+<div class="mt-4"><h3 class="font-semibold">Owner-supplied marker programmes</h3><p class="text-xs text-slate-500">TRANSCRIPT-DERIVED marker clues; presence is not proof of identity.</p><div id="programmes" class="mt-2 grid gap-2"></div></div>
+<details class="mt-4 text-sm"><summary class="cursor-pointer font-semibold">Marker expression table</summary><div class="mt-2 overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr class="border-b"><th class="p-2">Gene</th><th class="p-2">Programme</th><th class="p-2">Mean</th><th class="p-2">Median</th><th class="p-2">Cells positive</th></tr></thead><tbody id="expressionTable"></tbody></table></div></details>
+<p id="cardErr" class="err" hidden></p>
+</section>
+</div>
+
+<div class="min-w-0"><div class="rounded-xl bg-[#fffefa] p-2 shadow-sm lg:sticky lg:top-4">
+<div id="plot" class="h-[60vh] min-h-[28rem] w-full lg:h-[calc(100vh-7rem)]"></div>
+<p class="px-2 pb-1 text-xs text-slate-500">Hover a dot for its quality values · click a dot to look it up · use the lasso tool (top right) to summarise a group of cells.</p>
+</div></div>
+</div>
+
+<section class="mt-4 rounded-xl bg-white p-4 shadow-sm">
+<div class="flex flex-wrap items-end justify-between gap-3">
+<div><h2 class="text-xl font-bold">Marker dot plot, all clusters</h2><p class="max-w-3xl text-xs text-slate-500">DATASET-DERIVED values for TRANSCRIPT-DERIVED marker clues. Dot colour: mean log-normalised expression on one shared scale for every cluster. Dot size: % of cells in the cluster expressing the gene (0–100%). The selected cluster’s row is highlighted. Click a dot to colour the map by that gene.</p></div>
+<div class="w-full sm:w-auto"><div class="flex flex-wrap gap-2"><input id="dotGene" class="min-w-0 flex-1 rounded border p-2 text-sm sm:w-40 sm:flex-none" placeholder="Add a gene" list="geneList" autocomplete="off"><button id="dotAddBtn" class="rounded bg-blue-600 px-3 py-2 text-sm text-white">Add</button><button id="dotResetBtn" class="rounded border px-3 py-2 text-sm">Reset</button></div><p id="dotErr" class="err" hidden></p></div>
+</div>
+<div class="mt-2 overflow-x-auto"><div id="dotplot" class="h-[26rem] min-w-[46rem]"></div></div>
+</section>
+</section>
+
+<!-- ================= CLUSTERS 6 & 7 ================= -->
+<section data-panel="compare" class="mt-4" hidden>
+<div class="rounded-xl bg-white p-4 shadow-sm">
+<div class="flex flex-wrap items-center gap-2 text-sm"><span class="font-semibold">Compare cluster</span><select id="cmpA" class="rounded border p-1.5"></select><span>with cluster</span><select id="cmpB" class="rounded border p-1.5"></select></div>
+<p class="mt-1 text-xs text-slate-500">Stored quality values, owner-supplied marker programmes and top ranked markers, side by side. Click a gene to colour the map by it.</p>
+<div id="compareGrid" class="mt-4 grid gap-4 md:grid-cols-2"></div>
+</div>
+</section>
+
+<!-- ================= VALIDATION ================= -->
+<section data-panel="validation" class="mt-4" hidden>
+<div class="rounded-xl bg-white p-4 shadow-sm">
+<h2 class="text-xl font-bold">Clustering stability &amp; doublet screening</h2>
+<p id="stabilityMethod" class="mt-1 text-xs text-slate-500"></p>
+<div class="mt-3 overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr class="border-b"><th class="p-2">Cluster</th><th class="p-2">Cells</th><th class="p-2">Median stability</th><th class="p-2">Range</th></tr></thead><tbody id="stabilityRows"></tbody></table></div>
+<div class="mt-3 grid gap-2 sm:grid-cols-2"><div class="rounded bg-amber-50 p-3 text-sm"><b>Cluster 6:</b> Computationally stable; this does not establish identity or deletion safety.</div><div class="rounded bg-blue-50 p-3 text-sm"><b>Cluster 7:</b> Less stable; 2 of its 10 cells stay with it in only 21% of runs.</div></div>
+<p class="mt-3 text-xs text-slate-500">DATASET-DERIVED stability scores. Conclusions are computational observations, not cell-type annotations.</p>
+<div class="mt-4 border-t pt-4"><h3 class="font-semibold">Doublet screening summary</h3><p id="doubletMethod" class="mt-1 text-xs text-slate-500"></p><div id="doubletRows" class="mt-2 grid gap-2 sm:grid-cols-2"></div><p class="mt-2 text-xs text-slate-500">Screening flags are not doublet diagnoses. They use raw counts and marker co-expression; dedicated validation such as Scrublet would be needed for stronger evidence.</p></div>
+</div>
+
+<div class="mt-4 rounded-xl bg-white p-4 shadow-sm">
+<div class="flex flex-wrap items-center justify-between gap-2"><h2 class="text-xl font-bold">Provisional cluster annotations</h2><label class="flex items-center gap-2 text-sm"><input id="annAll" type="checkbox"> Show all clusters</label></div>
+<p class="mt-1 text-xs text-slate-500">Dataset observations, transcript-supported interpretation, and model biological knowledge are kept in separate columns. The owner asked only about clusters 6 and 7.</p>
+<div class="mt-3 overflow-x-auto"><table class="w-full min-w-[56rem] text-left text-sm"><thead><tr class="border-b"><th class="p-2">Cluster</th><th class="p-2">Suggested label</th><th class="p-2">Confidence</th><th class="p-2">Dataset-derived</th><th class="p-2">Transcript-derived</th><th class="p-2">Model pretrained knowledge</th></tr></thead><tbody id="annotationRows"></tbody></table></div>
+</div>
+
+<details class="mt-4 rounded-xl bg-white p-4 text-sm shadow-sm"><summary class="cursor-pointer font-semibold">Limitations and provenance</summary><div class="mt-2 space-y-2 text-slate-600"><p><b>Dataset-derived:</b> expression, quality, clusters, UMAP, and rankings.</p><p><b>Transcript-derived:</b> owner goals, supplied marker examples, and decision criteria.</p><p><b>Model knowledge:</b> biological annotations not explicitly in the transcript are not used as established evidence.</p><p>Clusters 6 and 7 contain only 13 and 10 cells. UMAP is a projection, not a measurement. There is no universal mitochondrial cutoff supplied here. Marker rankings do not prove identity. Read-level quality was not checked; only the processed file was supplied.</p></div></details>
+</section>
+
+<datalist id="geneList"></datalist>
+</main>
+<script>
+let data
+const colors=['#3b82c4','#d6534f','#45a85a','#8956b8','#e58a2b','#168fa3','#d04482','#829b32']
+const cmap=Object.fromEntries(colors.map((x,i)=>[String(i),x]))
+const $=id=>document.getElementById(id)
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))
+const fmt=n=>Math.round(n).toLocaleString()
+const S={selected:null,values:null,label:'Cluster',hl:null,stab:null,loose:[],showLoose:false,dotGenes:null,dot:null,annotations:[],compared:false}
+
+async function get(url){const r=await fetch(url);if(!r.ok){let m=r.statusText;try{m=(await r.json()).detail||m}catch(e){}throw Error(m)}return r.json()}
+function showErr(id,msg){const el=$(id);el.textContent=msg||'';el.hidden=!msg}
+function median(a){const s=[...a].sort((x,y)=>x-y),m=s.length>>1;return s.length?(s.length%2?s[m]:(s[m-1]+s[m])/2):NaN}
+
+function decisions(c){
+ if(c==='6')return ["Do not delete.","All 13 cells express PPBP and PF4 in raw counts, the owner's platelet-contamination clue, and the mitochondrial share is low (0.7–3.2%). The cells have low depth but are not blank. What they are is unresolved.","Moderate–high that this is a real, separate group rather than dead or empty material; low for what the cells are."]
+ if(c==='7')return ["Do not prioritise for the next sequencing run.","The T, B, NK and monocyte programmes overlap in the same cells and the top markers are generic. The cluster is an 8-cell core plus 2 loosely attached cells that group with cluster 0 at 3 of 4 reclustering resolutions.","Low–moderate for the recommendation; moderate for the 8 + 2 structure."]
+ return ["Exploratory view.","No owner decision is assigned to this cluster.","Not assessed."]}
+
+/* ---------- tabs ---------- */
+function showTab(t){
+ document.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===t)))
+ document.querySelectorAll('[data-panel]').forEach(p=>p.hidden=p.dataset.panel!==t)
+ if(t==='explore'){try{Plotly.Plots.resize('plot')}catch(e){}try{Plotly.Plots.resize('dotplot')}catch(e){}}
+ if(t==='compare'&&!S.compared){S.compared=true;renderCompare()}}
+
+/* ---------- decision strip ---------- */
+function renderStrip(){
+ $('decisionStrip').innerHTML=['6','7'].map(c=>{const d=decisions(c),n=data.cluster.filter(x=>x===c).length
+  return `<button class="rounded-xl border-l-4 bg-white p-4 text-left shadow-sm hover:shadow-md" style="border-color:${cmap[c]}" data-strip="${c}"><div class="text-xs font-semibold uppercase tracking-wide text-slate-500">Cluster ${c} · ${n} cells</div><div class="mt-1 text-lg font-bold">${d[0]}</div><div class="mt-1 text-xs text-slate-600"><b>Confidence:</b> ${d[2]}</div><div class="mt-1 text-xs text-blue-700">Show evidence →</div></button>`}).join('')
+ document.querySelectorAll('[data-strip]').forEach(b=>b.onclick=()=>{showTab('explore');select(b.dataset.strip);$('card').scrollIntoView({behavior:'smooth',block:'start'})})}
+
+/* ---------- UMAP ---------- */
+function plot(){
+ const n=data.x.length,idx=[...Array(n).keys()],traces=[]
+ const pick=ids=>({x:ids.map(i=>data.x[i]),y:ids.map(i=>data.y[i]),text:ids.map(i=>data.hover[i]),customdata:ids})
+ const base={mode:'markers',type:'scattergl',hovertemplate:'%{text}<extra></extra>'}
+ if(!S.values){traces.push({...base,...pick(idx),marker:{size:7,color:idx.map(i=>S.selected===null||data.cluster[i]===S.selected?cmap[data.cluster[i]]:'#cbd5e1')}})}
+ else{const vals=S.values.filter(v=>v!==null&&v!==undefined);let cmin=Infinity,cmax=-Infinity;vals.forEach(v=>{if(v<cmin)cmin=v;if(v>cmax)cmax=v})
+  const inSel=idx.filter(i=>S.selected===null||data.cluster[i]===S.selected),out=idx.filter(i=>S.selected!==null&&data.cluster[i]!==S.selected)
+  if(out.length)traces.push({...base,...pick(out),marker:{size:6,color:'#e2e8f0'}})
+  traces.push({...base,...pick(inSel),marker:{size:7,color:inSel.map(i=>S.values[i]),colorscale:'Viridis',cmin,cmax,showscale:true,colorbar:{title:{text:S.label}}}})}
+ if(S.showLoose&&S.loose.length)traces.push({mode:'markers',type:'scatter',...pick(S.loose),text:S.loose.map(i=>data.hover[i]+'<br><b>loosely attached</b>: stays with cluster 7 in '+Math.round(100*S.stab[i])+'% of runs'),hovertemplate:'%{text}<extra></extra>',marker:{size:18,color:'rgba(0,0,0,0)',line:{color:'#dc2626',width:3}}})
+ if(S.hl!==null)traces.push({mode:'markers',type:'scatter',...pick([S.hl]),hovertemplate:'%{text}<extra></extra>',marker:{size:22,color:'rgba(0,0,0,0)',line:{color:'#111827',width:3}}})
+ Plotly.react('plot',traces,{margin:{l:45,r:15,t:15,b:45},xaxis:{title:{text:'UMAP 1'}},yaxis:{title:{text:'UMAP 2'}},dragmode:'pan',showlegend:false,uirevision:'map'},{displaylogo:false,responsive:true})}
+
+async function colourBy(mode,gene){showErr('colourErr');try{
+ if(mode==='cluster'){S.values=null;S.label='Cluster'}
+ else if(mode==='gene'){if(!gene)throw Error('Type a gene name first.');const d=await get('/api/gene/'+encodeURIComponent(gene));S.values=d.values;S.label=gene}
+ else if(mode==='stability'){const d=await get('/api/stability/cells');S.values=d.values;S.label='Stability'}
+ else{const d=await get('/api/quality/'+mode);S.values=d.values;S.label=mode}
+ plot()}catch(e){showErr('colourErr',e.message)}}
+function apply(){colourBy($('colourMode').value,$('gene').value.trim())}
+function clickGene(g){showTab('explore');$('colourMode').value='gene';$('geneControls').hidden=false;$('gene').value=g;colourBy('gene',g);if(window.innerWidth<1024)$('plot').scrollIntoView({behavior:'smooth'})}
+
+async function toggleLoose(on){S.showLoose=on;showErr('colourErr');if(on&&!S.stab){try{const d=await get('/api/stability/cells');S.stab=d.values;S.loose=d.values.map((v,i)=>i).filter(i=>data.cluster[i]==='7'&&S.stab[i]!==null&&S.stab[i]<0.5)}catch(e){showErr('colourErr',e.message);$('looseToggle').checked=false;S.showLoose=false}}plot()}
+
+/* ---------- single cell ---------- */
+async function findCell(){const id=$('cellId').value.trim();showErr('cellErr');if(!id)return
+ try{const d=await get('/api/cell/'+encodeURIComponent(id));S.hl=data.index.get(d.cell_id);plot()
+  const q=d.quality,s=d.stability,r=d.raw_count_screen,card=$('cellCard')
+  card.innerHTML=`<b>${esc(d.cell_id)}</b><br>Cluster ${d.cluster} · UMAP (${d.umap.x.toFixed(2)}, ${d.umap.y.toFixed(2)})<br>${q.n_genes} genes · ${fmt(q.total_counts)} counts · ${q.pct_mito.toFixed(1)}% mito`+(s?`<br>Stays with its own cluster in ${Math.round(100*s.same_original_cocluster_frequency)}% of the 27 stability runs`:'')+(r?`<br>Raw-count screen: ${r.possible_mixed_programmes?'flagged as possibly mixed':'not flagged'} (${r.n_strong_programmes} marker programme${r.n_strong_programmes==1?'':'s'})`:'')+`<br><button id="clearCell" class="mt-1 underline">Clear</button>`
+  card.hidden=false;$('clearCell').onclick=()=>{S.hl=null;plot();card.hidden=true}}
+ catch(e){showErr('cellErr',e.message)}}
+
+/* ---------- lasso selection ---------- */
+function showSelection(ids){const card=$('selectionCard');if(!ids.length){card.hidden=true;return}
+ const counts={};ids.forEach(i=>counts[data.cluster[i]]=(counts[data.cluster[i]]||0)+1)
+ card.innerHTML=`<div class="flex items-center justify-between"><h3 class="font-semibold">Selected cells: ${ids.length}</h3><button id="clearSel" class="text-xs underline">Clear</button></div><p class="mt-1 text-sm">Median ${median(ids.map(i=>data.n_genes[i]))} genes · ${fmt(median(ids.map(i=>data.total_counts[i])))} counts · ${median(ids.map(i=>data.pct_mito[i])).toFixed(1)}% mito</p><div class="mt-2 flex flex-wrap gap-1 text-xs">${Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([c,n])=>`<span class="rounded px-2 py-0.5 text-white" style="background:${cmap[c]}">Cluster ${c}: ${n}</span>`).join('')}</div><p class="mt-2 text-xs text-slate-500">Summary of stored values for the selected cells.</p>`
+ card.hidden=false;$('clearSel').onclick=()=>{card.hidden=true;plot()}}
+
+/* ---------- cluster card ---------- */
+const geneItem=(g,val)=>`<li class="flex items-center justify-between gap-2 py-1"><span><span class="gene-link" data-gene="${esc(g)}">${esc(g)}</span> <button class="add-gene rounded border px-1 text-xs leading-4" data-gene="${esc(g)}" title="Add ${esc(g)} to the dot plot" aria-label="Add ${esc(g)} to the dot plot">+</button></span><span class="tabular-nums">${val}</span></li>`
+async function select(c){S.selected=c;plot();if(S.dot)drawDot(S.dot);showErr('cardErr')
+ try{const [g,q,p,e]=await Promise.all([get(`/api/clusters/${c}/genes?n_genes=10`),get(`/api/clusters/${c}/quality`),get(`/api/clusters/${c}/programmes`),get(`/api/expression-summary/${c}`)])
+  $('title').innerHTML=`<span class="mr-2 inline-block h-3 w-3 rounded-full align-middle" style="background:${cmap[c]}"></span>Cluster ${c}`
+  $('quality').textContent=`${q.n_cells} cells · median ${q.quality.n_genes.median} genes · ${fmt(q.quality.total_counts.median)} counts · ${q.quality.pct_mito.median.toFixed(1)}% mito`
+  $('average').innerHTML=g.average_expression.map(x=>geneItem(x.gene,x.value.toFixed(3))).join('')
+  $('markers').innerHTML=g.markers.map(x=>geneItem(x.gene,x.score.toFixed(3))).join('')
+  $('programmes').innerHTML=p.programmes.map(x=>`<div class="rounded bg-slate-50 p-2 text-sm"><div class="flex justify-between"><b>${x.programme}</b><span class="tabular-nums">${x.positive_cells}/${x.n_cells} cells</span></div><div class="mt-1 h-1.5 rounded bg-slate-200"><div class="h-1.5 rounded bg-slate-600" style="width:${100*x.positive_cells/x.n_cells}%"></div></div><div class="mt-1 text-xs text-slate-500">${x.genes.map(gn=>`<span class="gene-link" data-gene="${esc(gn)}">${esc(gn)}</span>`).join(', ')}</div></div>`).join('')
+  const d=decisions(c);$('decision').textContent=d[0]+' '+d[1];$('decision').style.borderColor=cmap[c];$('confidence').innerHTML='<b>Confidence:</b> '+d[2]
+  $('download').href=`/api/report/${c}.csv`
+  $('expressionTable').innerHTML=e.genes.map(x=>`<tr class="border-b"><td class="p-2 font-medium"><span class="gene-link" data-gene="${esc(x.gene)}">${esc(x.gene)}</span></td><td class="p-2">${x.programme}</td><td class="p-2">${x.mean.toFixed(3)}</td><td class="p-2">${x.median.toFixed(3)}</td><td class="p-2">${x.pct_positive.toFixed(1)}%</td></tr>`).join('')
+  $('card').hidden=false}
+ catch(err){$('card').hidden=false;showErr('cardErr',err.message)}}
+
+/* ---------- dot plot ---------- */
+async function loadDot(){showErr('dotErr');try{const q=S.dotGenes?'?genes='+encodeURIComponent(S.dotGenes.join(',')):'';const d=await get('/api/dotplot'+q);S.dot=d;if(!S.dotGenes)S.defaultGenes=d.genes.map(x=>x.gene);if(d.unknown.length)showErr('dotErr','Not in the dataset: '+d.unknown.join(', '));drawDot(d)}catch(e){showErr('dotErr',e.message)}}
+function drawDot(d){
+ const G=d.genes,C=d.clusters,xs=[],ys=[],sz=[],col=[],tx=[],gs=[]
+ C.forEach((c,ci)=>G.forEach((g,gi)=>{const m=d.mean[ci][gi],p=d.pct[ci][gi];xs.push(gi);ys.push(ci);sz.push(3+24*p/100);col.push(m);gs.push(g.gene);tx.push(`Cluster ${c} · ${g.gene} (${g.programme})<br>mean ${m.toFixed(2)} · ${p.toFixed(0)}% of cells`)}))
+ const shapes=[],ann=[];let start=0
+ G.forEach((g,gi)=>{if(gi===G.length-1||G[gi+1].programme!==g.programme){const k=shapes.length;shapes.push({type:'rect',xref:'x',yref:'paper',x0:start-0.45,x1:gi+0.45,y0:1.01,y1:1.1,fillcolor:k%2?'#e2e8f0':'#f1f5f9',line:{width:0}});ann.push({xref:'x',yref:'paper',x:(start+gi)/2,y:1.055,text:g.programme,showarrow:false,font:{size:11}});start=gi+1}})
+ if(S.selected!==null){const ci=C.indexOf(S.selected);if(ci>=0)shapes.push({type:'rect',xref:'paper',yref:'y',x0:0,x1:1,y0:ci-0.5,y1:ci+0.5,fillcolor:'rgba(250,204,21,0.28)',line:{width:0},layer:'below'})}
+ Plotly.react('dotplot',[{x:xs,y:ys,mode:'markers',type:'scatter',text:tx,customdata:gs,hovertemplate:'%{text}<extra></extra>',marker:{size:sz,color:col,colorscale:'Reds',cmin:0,cmax:d.max_mean,showscale:true,colorbar:{title:{text:'Mean expr.'},thickness:12},line:{color:'#94a3b8',width:0.5}}}],
+  {margin:{l:80,r:20,t:40,b:70},xaxis:{tickvals:G.map((_,i)=>i),ticktext:G.map(g=>g.gene),tickangle:-45,range:[-0.6,G.length-0.4],showgrid:false,zeroline:false},yaxis:{tickvals:C.map((_,i)=>i),ticktext:C.map(c=>'Cluster '+c),range:[C.length-0.5,-0.5],showgrid:false,zeroline:false},shapes,annotations:ann,showlegend:false},{displaylogo:false,responsive:true})}
+function addDotGene(g){g=(g||'').trim();if(!g)return;const cur=S.dotGenes||(S.dot?S.dot.genes.map(x=>x.gene):[]);if(!cur.includes(g))S.dotGenes=[...cur,g];loadDot();$('dotGene').value=''}
+
+/* ---------- compare ---------- */
+async function renderCompare(){const a=$('cmpA').value,b=$('cmpB').value;$('compareGrid').innerHTML='<p class="text-sm text-slate-500">Loading…</p>'
+ try{const cols=await Promise.all([a,b].map(async c=>{const [q,p,g]=await Promise.all([get(`/api/clusters/${c}/quality`),get(`/api/clusters/${c}/programmes`),get(`/api/clusters/${c}/genes?n_genes=5`)]);const d=decisions(c)
+  return `<div class="rounded-xl border-t-4 bg-slate-50 p-4" style="border-color:${cmap[c]}"><h3 class="text-xl font-bold">Cluster ${c}</h3><p class="mt-2 text-sm"><b>${d[0]}</b> ${d[1]}</p><p class="mt-1 text-xs text-slate-600"><b>Confidence:</b> ${d[2]}</p>
+  <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm"><dt class="text-slate-500">Cells</dt><dd class="tabular-nums">${q.n_cells}</dd><dt class="text-slate-500">Median genes</dt><dd class="tabular-nums">${q.quality.n_genes.median}</dd><dt class="text-slate-500">Median counts</dt><dd class="tabular-nums">${fmt(q.quality.total_counts.median)}</dd><dt class="text-slate-500">Median mito %</dt><dd class="tabular-nums">${q.quality.pct_mito.median.toFixed(1)}</dd></dl>
+  <h4 class="mt-3 text-sm font-semibold">Marker programmes (cells positive)</h4><div class="mt-1 space-y-1">${p.programmes.map(x=>`<div class="text-xs"><div class="flex justify-between"><span>${x.programme}</span><span class="tabular-nums">${x.positive_cells}/${x.n_cells}</span></div><div class="h-1.5 rounded bg-slate-200"><div class="h-1.5 rounded" style="width:${100*x.positive_cells/x.n_cells}%;background:${cmap[c]}"></div></div></div>`).join('')}</div>
+  <h4 class="mt-3 text-sm font-semibold">Top ranked markers</h4><p class="mt-1 text-sm">${g.markers.map(x=>`<span class="gene-link" data-gene="${esc(x.gene)}">${esc(x.gene)}</span>`).join(', ')}</p></div>`}))
+  $('compareGrid').innerHTML=cols.join('')}catch(e){$('compareGrid').textContent=e.message}}
+
+/* ---------- validation ---------- */
+function renderAnnotations(){const all=$('annAll').checked;$('annotationRows').innerHTML=S.annotations.filter(x=>all||['6','7'].includes(String(x.cluster))).map(x=>`<tr class="border-b align-top"><td class="p-2 font-semibold">${x.cluster}</td><td class="p-2">${esc(x.label)}</td><td class="p-2">${esc(x.confidence)}</td><td class="p-2">${esc(x.dataset)}</td><td class="p-2">${esc(x.transcript)}</td><td class="p-2">${esc(x.model)}</td></tr>`).join('')}
+async function loadAnnotations(){const a=await get('/api/annotations');S.annotations=a.rows;renderAnnotations()}
+async function loadDoublets(){const d=await get('/api/doublets');$('doubletMethod').textContent=d.method;$('doubletRows').innerHTML=d.clusters.map(x=>`<div class="rounded bg-slate-50 p-3 text-sm"><b>Cluster ${x.cluster}</b> · ${x.n_cells} cells<br>Median raw counts ${fmt(x.median_raw_counts)} (max ${fmt(x.max_raw_counts)})<br>Cells with more than one marker programme: ${x.mixed_cells}/${x.n_cells}</div>`).join('')}
 async function loadStability(){const s=await get('/api/stability');$('stabilityMethod').textContent=s.method;$('stabilityRows').innerHTML=s.clusters.filter(x=>['6','7'].includes(String(x.cluster))).map(x=>`<tr class="border-b"><td class="p-2">${x.cluster}</td><td class="p-2">${x.n_cells}</td><td class="p-2">${Number(x.median_same_original_cocluster_frequency).toFixed(3)}</td><td class="p-2">${Number(x.min_same_original_cocluster_frequency).toFixed(3)}–${Number(x.max_same_original_cocluster_frequency).toFixed(3)}</td></tr>`).join('')}
-async function init(){data=await get('/api/umap');const clusters=[...new Set(data.cluster)].sort((a,b)=>+a-+b);clusters.forEach(c=>{const b=document.createElement('button');b.textContent='Cluster '+c;b.className='rounded px-2 py-2 text-sm font-medium';b.style.background=cmap[c];b.style.color='white';b.onclick=()=>select(c);$('clusterButtons').appendChild(b)});data.cell_id.slice(0,0);plot();$('plot').on('plotly_click',ev=>{const pt=ev.points[0];if(pt&&pt.text){$('cellId').value=pt.text;findCell()}});$('card').classList.add('hidden')}
-loadStability().catch(e=>console.warn('Stability summary unavailable',e));loadDoublets().catch(e=>console.warn('Doublet summary unavailable',e));loadAnnotations().catch(e=>console.warn('Annotations unavailable',e));$('colourMode').onchange=()=>$('geneControls').classList.toggle('hidden',$('colourMode').value!=='gene');$('colourBtn').onclick=apply;$('findBtn').onclick=findCell;$('cellId').onkeydown=e=>{if(e.key==='Enter')findCell()};$('resetBtn').onclick=()=>{plot();$('card').classList.add('hidden')};init().catch(e=>alert(e.message));
+
+/* ---------- start ---------- */
+async function init(){data=await get('/api/umap')
+ data.hover=data.x.map((_,i)=>`cell ${data.cell_id[i]}<br>cluster ${data.cluster[i]}<br>${data.n_genes[i]} genes · ${fmt(data.total_counts[i])} counts · ${data.pct_mito[i].toFixed(1)}% mito`)
+ data.index=new Map(data.cell_id.map((id,i)=>[id,i]))
+ const clusters=[...new Set(data.cluster)].sort((a,b)=>+a-+b)
+ clusters.forEach(c=>{const b=document.createElement('button');b.textContent=c;b.title='Cluster '+c;b.setAttribute('aria-label','Cluster '+c);b.className='rounded py-2 text-sm font-semibold';b.style.background=cmap[c];b.style.color='white';b.onclick=()=>select(c);$('clusterButtons').appendChild(b)})
+ ;['cmpA','cmpB'].forEach((id,k)=>{$(id).innerHTML=clusters.map(c=>`<option value="${c}">${c}</option>`).join('');$(id).value=k?'7':'6';$(id).onchange=renderCompare})
+ renderStrip();plot()
+ $('plot').on('plotly_click',ev=>{const pt=ev.points[0];if(pt&&pt.customdata!==undefined&&typeof pt.customdata==='number'){$('cellId').value=data.cell_id[pt.customdata];findCell()}})
+ $('plot').on('plotly_selected',ev=>showSelection(ev&&ev.points?[...new Set(ev.points.map(p=>p.customdata).filter(v=>typeof v==='number'))]:[]))
+ $('plot').on('plotly_deselect',()=>showSelection([]))
+ await loadDot()
+ $('dotplot').on('plotly_click',ev=>{const pt=ev.points[0];if(pt&&pt.customdata)clickGene(pt.customdata)})
+ get('/api/genes').then(g=>{$('geneList').innerHTML=g.genes.map(x=>`<option value="${esc(x)}">`).join('')}).catch(e=>console.warn('Gene list unavailable',e))}
+
+document.addEventListener('click',ev=>{const add=ev.target.closest('.add-gene');if(add){addDotGene(add.dataset.gene);return}const link=ev.target.closest('.gene-link');if(link)clickGene(link.dataset.gene)})
+document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>showTab(b.dataset.tab))
+$('colourMode').onchange=()=>{$('geneControls').hidden=$('colourMode').value!=='gene';showErr('colourErr')}
+$('colourBtn').onclick=apply;$('gene').onkeydown=e=>{if(e.key==='Enter')apply()}
+$('findBtn').onclick=findCell;$('cellId').onkeydown=e=>{if(e.key==='Enter')findCell()}
+$('looseToggle').onchange=e=>toggleLoose(e.target.checked)
+$('resetBtn').onclick=()=>{S.selected=null;plot();if(S.dot)drawDot(S.dot);$('card').hidden=true}
+$('dotAddBtn').onclick=()=>addDotGene($('dotGene').value);$('dotGene').onkeydown=e=>{if(e.key==='Enter')addDotGene($('dotGene').value)}
+$('dotResetBtn').onclick=()=>{S.dotGenes=null;loadDot()}
+$('annAll').onchange=renderAnnotations
+loadStability().catch(e=>console.warn('Stability summary unavailable',e))
+loadDoublets().catch(e=>console.warn('Doublet summary unavailable',e))
+loadAnnotations().catch(e=>console.warn('Annotations unavailable',e))
+init().catch(e=>{document.querySelector('main').insertAdjacentHTML('afterbegin',`<p class="mb-4 rounded bg-red-50 p-3 text-sm text-red-700">Could not load the dataset: ${esc(e.message)}</p>`)})
 </script></body></html>'''
 
 
