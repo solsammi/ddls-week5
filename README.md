@@ -68,8 +68,9 @@ The header shows the talk title and names. A **Larger text** button enlarges eve
    - lasso-select cells for a summary;
    - a cluster card with the highest-expressed and ranked marker genes (click a gene to colour the map by it), the owner's marker programmes, and a CSV download;
    - a dot plot of the owner's marker genes across all clusters, where you can add more genes.
+   - provisional annotations for all clusters (6 and 7 first), with dataset, transcript and model-knowledge evidence in separate columns.
 3. **Clusters 6 & 7**: whether either cluster should be merged, split or binned, with the evidence, and a side-by-side comparison of any two clusters.
-4. **Methods & validation**: why each analysis was done and what it showed, the independent reclustering, clustering stability, the raw-count doublet screen, and provisional annotations.
+4. **Methods & validation**: why each analysis was done and what it showed, the independent reclustering, clustering stability, and the raw-count doublet screen.
 5. **Answers, limits & AI use**: the answers with confidence, the limits, where each piece of knowledge came from, and how the work was split between Pi, Claude and me.
 
 Cluster numbers are computational labels, not cell types. UMAP is a 2-D projection, so a cell's position on it is not a measurement.

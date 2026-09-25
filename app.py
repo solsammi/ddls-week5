@@ -234,15 +234,16 @@ def doublet_summary(request: Request):
 
 @app.get("/api/annotations")
 def annotations():
+    """Provisional labels for all clusters, clusters 6 and 7 first. Dataset, transcript and model-knowledge evidence are kept in separate fields."""
     return {"rows": [
-        {"cluster": "0", "dataset": "Mostly ribosomal/housekeeping genes; CD3D is among the top markers.", "transcript": "T-cell clue is present, but no coherent programme was established.", "model": "Possible T-cell-rich or low-specificity lymphocyte group.", "label": "Unresolved lymphocyte-like / low-specificity", "confidence": "Low"},
-        {"cluster": "1", "dataset": "LYZ, S100A8, S100A9, TYROBP, CST3, FCN1.", "transcript": "LYZ and S100A8/A9 support the owner’s monocyte clues.", "model": "Inflammatory/classical monocyte-like.", "label": "Inflammatory monocyte-like", "confidence": "Moderate-high"},
-        {"cluster": "2", "dataset": "NKG7, GZMA, CST7, CTSW, CCL5, PRF1, GZMB, FGFBP2.", "transcript": "NKG7 supports the owner’s NK-cell clue.", "model": "Cytotoxic NK-like or cytotoxic lymphocyte-like.", "label": "Cytotoxic NK-like", "confidence": "Moderate"},
-        {"cluster": "3", "dataset": "CD74, CD79A, HLA-DRA, CD79B, MS4A1, CD37, TCL1A.", "transcript": "CD79A, MS4A1, and CD37 support the owner’s B-cell clues.", "model": "B-cell-like; possible naïve/transitional subtype.", "label": "B-cell-like", "confidence": "High for broad identity"},
-        {"cluster": "4", "dataset": "LST1, FCER1G, FCGR3A, AIF1, CTSS, SERPINA1.", "transcript": "LST1 supports the owner’s monocyte clue.", "model": "FCGR3A-associated/non-classical monocyte-like.", "label": "FCGR3A-associated monocyte-like", "confidence": "Moderate-high"},
-        {"cluster": "5", "dataset": "HLA-DPA1, HLA-DPB1, HLA-DRA, CD74, FCER1A, CLEC10A, CST3, LYZ.", "transcript": "FCER1A and CST3 support the owner’s dendritic-cell-like clues.", "model": "Dendritic-cell-like antigen-presenting population.", "label": "Dendritic-cell-like", "confidence": "Moderate"},
-        {"cluster": "6", "dataset": "PF4, PPBP, GP9, ITGA2B, TUBB1, GNG11, SPARC.", "transcript": "PPBP and PF4 are explicitly platelet-contamination clues.", "model": "Platelet/megakaryocyte-associated interpretation.", "label": "Platelet contamination", "confidence": "Moderate"},
-        {"cluster": "7", "dataset": "KIAA0101, STMN1, PCNA, TYMS, ZWINT, PTTG1; broad lineage-marker overlap.", "transcript": "No coherent T-, B-, NK-, or monocyte programme established.", "model": "Possible cycling/proliferative lymphocyte-like population.", "label": "Probably cycling cells (model knowledge)", "confidence": "Low-moderate"}
+        {"cluster": "6", "label": "Platelet contamination", "basis": "Transcript clue, supported by model knowledge", "confidence": "Moderate–high", "dataset": "Top ranked markers include SDPR, GNG11, PF4, PPBP, NRGN, SPARC and GP9. All 13 cells are PPBP- and PF4-positive in raw counts.", "transcript": "The owner named PPBP and PF4 as platelet-contamination clues.", "model": "PF4, PPBP, GP9, ITGA2B, TUBB1, GNG11 and SPARC are classic platelet/megakaryocyte genes. Low gene counts fit small platelets or platelets stuck to other cells."},
+        {"cluster": "7", "label": "Probably cycling cells", "basis": "Model knowledge", "confidence": "Low–moderate", "dataset": "Top ranked markers include ACTG1, CFL1, GAPDH, KIAA0101, STMN1, PCNA, TUBB and HMGB2. The T, B, NK and monocyte programmes are each positive in 8–10 of the 10 cells. High depth.", "transcript": "No coherent T, B, NK or monocyte programme; overlapping programmes count as “mixed”.", "model": "KIAA0101, STMN1, PCNA, TYMS, ZWINT, PTTG1 and HMGB2 are cell-cycle and proliferation genes, so these are likely dividing cells, possibly proliferating lymphocytes. High depth with mixed programmes could also mean doublets."},
+        {"cluster": "0", "label": "Likely T cells (mainly CD4-like)", "basis": "Transcript clue + model knowledge", "confidence": "Moderate for T cells; low for the subtype", "dataset": "Top ranked markers are mostly ribosomal genes plus LDHB and CD3D. Largest cluster (1,197 cells) and the least stable one (median stability 0.67).", "transcript": "CD3D, one of the owner’s T-cell clues, is among the top 7 markers.", "model": "High ribosomal genes, LDHB and CD3D are typical of resting (naive or memory) CD4 T cells. Because it is large and less stable, it may also contain CD8 T cells."},
+        {"cluster": "1", "label": "Classical (CD14+) monocytes", "basis": "Transcript clue + model knowledge", "confidence": "High for monocytes; moderate for the classical subtype", "dataset": "Top ranked markers: LYZ, S100A9, S100A8, TYROBP, CST3, FCN1.", "transcript": "LYZ and S100A8/A9 are the owner’s monocyte clues (S100A8/A9 for more inflammatory monocytes).", "model": "LYZ, S100A8/9 and FCN1 are typical of classical (CD14+) monocytes."},
+        {"cluster": "2", "label": "Cytotoxic lymphocytes (NK and CD8 T-like)", "basis": "Transcript clue + model knowledge", "confidence": "Moderate", "dataset": "Top ranked markers: NKG7, GZMA, CST7, CTSW, CCL5, PRF1, GZMM, GZMB, FGFBP2.", "transcript": "NKG7 is one of the owner’s NK-cell clues.", "model": "Granzymes, perforin and NKG7 mark cytotoxic lymphocytes. CCL5 and GZMM lean towards CD8 T cells, GZMB and FGFBP2 towards NK cells, so this is likely a mix of both."},
+        {"cluster": "3", "label": "B cells (likely naive)", "basis": "Transcript clue + model knowledge", "confidence": "High for B cells; moderate for naive", "dataset": "Top ranked markers: CD74, CD79A, HLA-DRA, CD79B, MS4A1, CD37, TCL1A, LINC00926. Perfectly stable (1.00).", "transcript": "CD79A, MS4A1 and CD37 are the owner’s B-cell clues.", "model": "CD79A/B and MS4A1 (CD20) define B cells; TCL1A and LINC00926 suggest naive B cells."},
+        {"cluster": "4", "label": "Non-classical (CD16+) monocytes", "basis": "Transcript clue + model knowledge", "confidence": "Moderate–high", "dataset": "Top ranked markers: LST1, FCER1G, FCGR3A, COTL1, AIF1, IFITM2, IFITM3.", "transcript": "LST1 is one of the owner’s monocyte clues.", "model": "FCGR3A (CD16) together with LST1 and AIF1 marks non-classical (CD16+) monocytes."},
+        {"cluster": "5", "label": "Dendritic cells (cDC2-like)", "basis": "Transcript clue + model knowledge", "confidence": "Moderate–high", "dataset": "Top ranked markers: HLA class II genes, CD74, CST3, FCER1A, CLEC10A. 36 cells, perfectly stable (1.00).", "transcript": "FCER1A and CST3 are the owner’s dendritic-cell-like clues.", "model": "FCER1A and CLEC10A with high HLA class II expression mark conventional dendritic cells (cDC2)."}
     ]}
 
 
@@ -404,6 +405,12 @@ HTML = r'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name
 </div>
 <div class="mt-2 overflow-x-auto"><div id="dotplot" class="h-[26rem] min-w-[46rem]"></div></div>
 </section>
+
+<div class="mt-4 rounded-xl bg-white p-4 shadow-sm">
+<div class="flex flex-wrap items-center justify-between gap-2"><h2 class="text-xl font-bold">Provisional cluster annotations</h2></div>
+<p class="mt-1 text-xs text-slate-500">Dataset observations, the owner’s transcript clues, and the model’s general biology knowledge are kept in separate columns; “Label based on” says which of them each label rests on. Clusters 6 and 7, which the owner asked about, come first; the others are listed for context. All labels are provisional.</p>
+<div class="mt-3 overflow-x-auto"><table class="w-full min-w-[56rem] text-left text-sm"><thead><tr class="border-b"><th class="p-2">Cluster</th><th class="p-2">Suggested label</th><th class="p-2">Label based on</th><th class="p-2">Confidence</th><th class="p-2">Dataset-derived</th><th class="p-2">Transcript-derived</th><th class="p-2">Model pretrained knowledge</th></tr></thead><tbody id="annotationRows"></tbody></table></div>
+</div>
 </section>
 
 <!-- ================= CLUSTERS 6 & 7 ================= -->
@@ -449,11 +456,6 @@ HTML = r'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name
 <div class="mt-4 border-t pt-4"><h3 class="font-semibold">Doublet screening summary</h3><p class="mt-1 text-sm"><b>Why:</b> unusually high counts plus markers from two lineages can mean a doublet, two cells captured together that look like a new cell type.</p><p id="doubletMethod" class="mt-1 text-xs text-slate-500"></p><div id="doubletRows" class="mt-2 grid gap-2 sm:grid-cols-2"></div><p id="doubletCompare" class="mt-2 text-sm"></p><p class="mt-1 text-sm"><b>Conclusion:</b> cluster 7 looks like it could be made of doublets rather than one real cell type. This is a screening flag, not proof.</p><p class="mt-2 text-xs text-slate-500">Screening flags are not doublet diagnoses. They use raw counts and marker co-expression; dedicated validation such as Scrublet would be needed for stronger evidence.</p></div>
 </div>
 
-<div class="mt-4 rounded-xl bg-white p-4 shadow-sm">
-<div class="flex flex-wrap items-center justify-between gap-2"><h2 class="text-xl font-bold">Provisional cluster annotations</h2><label class="flex items-center gap-2 text-sm"><input id="annAll" type="checkbox"> Show all clusters</label></div>
-<p class="mt-1 text-xs text-slate-500">Dataset observations, transcript-supported interpretation, and model biological knowledge are kept in separate columns. The owner asked only about clusters 6 and 7.</p>
-<div class="mt-3 overflow-x-auto"><table class="w-full min-w-[56rem] text-left text-sm"><thead><tr class="border-b"><th class="p-2">Cluster</th><th class="p-2">Suggested label</th><th class="p-2">Confidence</th><th class="p-2">Dataset-derived</th><th class="p-2">Transcript-derived</th><th class="p-2">Model pretrained knowledge</th></tr></thead><tbody id="annotationRows"></tbody></table></div>
-</div>
 
 </section>
 
@@ -595,7 +597,7 @@ async function renderCompare(){const a=$('cmpA').value,b=$('cmpB').value;$('comp
   $('compareGrid').innerHTML=cols.join('')}catch(e){$('compareGrid').textContent=e.message}}
 
 /* ---------- validation ---------- */
-function renderAnnotations(){const all=$('annAll').checked;$('annotationRows').innerHTML=S.annotations.filter(x=>all||['6','7'].includes(String(x.cluster))).map(x=>`<tr class="border-b align-top"><td class="p-2 font-semibold">${x.cluster}</td><td class="p-2">${esc(x.label)}</td><td class="p-2">${esc(x.confidence)}</td><td class="p-2">${esc(x.dataset)}</td><td class="p-2">${esc(x.transcript)}</td><td class="p-2">${esc(x.model)}</td></tr>`).join('')}
+function renderAnnotations(){$('annotationRows').innerHTML=S.annotations.map(x=>`<tr class="border-b align-top${['6','7'].includes(String(x.cluster))?' bg-amber-50/60':''}"><td class="p-2 font-semibold"><span class="mr-1 inline-block h-2.5 w-2.5 rounded-full" style="background:${cmap[x.cluster]}"></span>${x.cluster}</td><td class="p-2 font-medium">${esc(x.label)}</td><td class="p-2 text-xs">${esc(x.basis)}</td><td class="p-2">${esc(x.confidence)}</td><td class="p-2">${esc(x.dataset)}</td><td class="p-2">${esc(x.transcript)}</td><td class="p-2">${esc(x.model)}</td></tr>`).join('')}
 async function loadAnnotations(){const a=await get('/api/annotations');S.annotations=a.rows;renderAnnotations()}
 async function loadReclustering(){const r=await get('/api/reclustering');$('reclusterMethod').textContent=r.method;$('reclusterRows').innerHTML=r.runs.map(x=>`<tr class="border-b"><td class="p-2">${x.resolution}</td><td class="p-2">${x.n_clusters}</td><td class="p-2 tabular-nums">${x.mean_purity.toFixed(2)}</td></tr>`).join('');const p=r.runs.map(x=>x.mean_purity);$('purityRange').textContent=Math.min(...p).toFixed(2)+'–'+Math.max(...p).toFixed(2)}
 async function loadDoublets(){const d=await get('/api/doublets');$('doubletMethod').textContent=d.method;const c7=d.clusters.find(x=>x.cluster==='7');if(c7)$('doubletCompare').innerHTML=`Cluster 7 has a median of <b>${fmt(c7.median_raw_counts)}</b> raw counts, against ${fmt(d.others_median_raw_counts[0])}–${fmt(d.others_median_raw_counts[1])} in clusters 0–5.`;$('doubletRows').innerHTML=d.clusters.map(x=>`<div class="rounded bg-slate-50 p-3 text-sm"><b>Cluster ${x.cluster}</b> · ${x.n_cells} cells<br>Median raw counts ${fmt(x.median_raw_counts)} (max ${fmt(x.max_raw_counts)})<br>Cells with more than one marker programme: ${x.mixed_cells}/${x.n_cells}</div>`).join('')}
@@ -626,7 +628,6 @@ document.querySelectorAll('[data-show-loose]').forEach(b=>b.onchange=e=>{$('loos
 $('resetBtn').onclick=()=>{S.selected=null;plot();if(S.dot)drawDot(S.dot);$('card').hidden=true}
 $('dotAddBtn').onclick=()=>addDotGene($('dotGene').value);$('dotGene').onkeydown=e=>{if(e.key==='Enter')addDotGene($('dotGene').value)}
 $('dotResetBtn').onclick=()=>{S.dotGenes=null;loadDot()}
-$('annAll').onchange=renderAnnotations
 function setBig(on){document.documentElement.style.fontSize=on?'19px':'';$('bigText').setAttribute('aria-pressed',String(on));$('bigText').textContent=on?'Normal text':'Larger text';try{localStorage.setItem('bigText',on?'1':'')}catch(e){}setTimeout(()=>{try{Plotly.Plots.resize('plot')}catch(e){}try{Plotly.Plots.resize('dotplot')}catch(e){}},50)}
 $('bigText').onclick=()=>setBig($('bigText').getAttribute('aria-pressed')!=='true')
 try{if(localStorage.getItem('bigText'))setBig(true)}catch(e){}
