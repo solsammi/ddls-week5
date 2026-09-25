@@ -13,10 +13,10 @@ The core facility returned the cells already grouped into clusters 0–7, togeth
 
 ## The answer
 
-| Cluster | Answer | Confidence |
-|---|---|---|
-| 6 | **Platelet contamination, not dead or empty cells.** All 13 cells express `PPBP` and `PF4` in raw counts, which is the owner's platelet-contamination clue, and the mitochondrial share is low (0.7–3.2%). Deleting it as dead or empty junk would be wrong; removing it as platelet contamination is the owner's call. | Moderate–high that it is platelet contamination rather than dead or empty material |
-| 7 | **Don't prioritise the next run: probably cycling cells.** Its top markers include `STMN1`, `PCNA`, `TYMS` and `PTTG1`, which suggests cycling (dividing) cells, not one of the T, B, NK or monocyte identities the owner asked for. Those programmes overlap in the same cells. The cluster is an 8-cell core plus 2 loosely attached cells. | Low–moderate for the recommendation and for the cycling reading; moderate for the 8 + 2 structure |
+| Cluster | Answer |
+|---|---|
+| 6 | **Platelet contamination, not dead or empty cells.** All 13 cells express `PPBP` and `PF4` in raw counts, which is the owner's platelet-contamination clue, and the mitochondrial share is low (0.7–3.2%). Deleting it as dead or empty junk would be wrong; removing it as platelet contamination is the owner's call. |
+| 7 | **Don't prioritise the next run: probably cycling cells.** Its top markers include `STMN1`, `PCNA`, `TYMS` and `PTTG1`, which suggests cycling (dividing) cells, not one of the T, B, NK or monocyte identities the owner asked for. Those programmes overlap in the same cells. The cluster is an 8-cell core plus 2 loosely attached cells. |
 
 Both answers rest on very few cells. See [Limits](#limits).
 
