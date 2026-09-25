@@ -15,8 +15,8 @@ The core facility returned the cells already grouped into clusters 0–7, togeth
 
 | Cluster | Answer | Confidence |
 |---|---|---|
-| 6 | **Don't delete. Keep it for review.** All 13 cells express `PPBP` and `PF4` in raw counts, which is the owner's platelet-contamination clue. The mitochondrial share is low (0.7–3.2%), and the cells are low-depth but not blank. What the cells are is unresolved. | Moderate–high that it is a real, separate group rather than dead or empty material; low for what the cells are |
-| 7 | **Don't prioritise the next run.** The T, B, NK and monocyte programmes overlap in the same cells, and the top markers are generic. The cluster is an 8-cell core plus 2 loosely attached cells. | Low–moderate for the recommendation; moderate for the 8 + 2 structure |
+| 6 | **Platelet contamination, not dead or empty cells.** All 13 cells express `PPBP` and `PF4` in raw counts, which is the owner's platelet-contamination clue, and the mitochondrial share is low (0.7–3.2%). Deleting it as dead or empty junk would be wrong; removing it as platelet contamination is the owner's call. | Moderate–high that it is platelet contamination rather than dead or empty material |
+| 7 | **Don't prioritise the next run: probably cycling cells.** Its top markers include `STMN1`, `PCNA`, `TYMS` and `PTTG1`, which suggests cycling (dividing) cells, not one of the T, B, NK or monocyte identities the owner asked for. Those programmes overlap in the same cells. The cluster is an 8-cell core plus 2 loosely attached cells. | Low–moderate for the recommendation and for the cycling reading; moderate for the 8 + 2 structure |
 
 Both answers rest on very few cells. See [Limits](#limits).
 
@@ -136,7 +136,7 @@ The facility computed the clusters and the map, and they were not changed.
 
 ## Limits
 
-- **Very few cells:** both answers rest on 10 and 13 cells. Cluster 7 is the least stable cluster (2 of its cells stay with it in only 21% of runs), and the doublet flag is a screening rule, not a validated classifier.
+- **Very few cells, and best readings rather than proof:** both answers rest on 10 and 13 cells. Platelet contamination rests on the owner's own `PPBP`/`PF4` clue. "Cycling" comes from the model's general biology knowledge, not from the transcript or the data, and cluster 7 could also be doublets. Cluster 7 is the least stable cluster (2 of its cells stay with it in only 21% of runs), and the doublet flag is a screening rule, not a validated classifier.
 - **Read-level quality was never checked:** only the processed file was supplied, with no raw reads or run report.
 - **The facility's filtering is unknown:** its cell filtering before delivery is undocumented, so which cells it removed, and with what thresholds, is unknown.
 - **No mitochondrial cut-off:** none was supplied, and marker rankings do not prove identity.
