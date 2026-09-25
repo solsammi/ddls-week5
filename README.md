@@ -31,18 +31,21 @@ ddls-week5-s1-junk-or-signal-dataset.zip   The dataset archive as supplied
 week5_slides.html      Seminar slide deck (self-contained HTML)
 ddls-week5-interview.md  Transcript of the interview with the data owner
 AGENTS.md, spec.md     Working rules and problem specification
+requirements.txt       Pinned Python packages
 ```
 
 ## Setup
 
-The project uses [`uv`](https://docs.astral.sh/uv/). Create the environment and install the packages:
+The project uses [`uv`](https://docs.astral.sh/uv/) and Python 3.13. Clone the repository, then create the environment and install the pinned packages from `requirements.txt`:
 
 ```bash
-uv venv
-uv pip install scanpy fastapi 'uvicorn[standard]' python-multipart igraph
+git clone https://github.com/solsammi/ddls-week5.git
+cd ddls-week5
+uv venv --python 3.13
+uv pip install -r requirements.txt
 ```
 
-Run all Python through `uv run`.
+Run all Python through `uv run`. Without `uv`, a standard virtual environment works too: `python3.13 -m venv .venv`, activate it, then `pip install -r requirements.txt`.
 
 ## Run the app
 
