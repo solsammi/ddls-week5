@@ -354,7 +354,7 @@ table.mini th { font: 500 11px/1.2 var(--mono); color: var(--muted); text-transf
     <div class="cl c6">
       <div class="cl-head">
         <span class="tag c6">CLUSTER 6</span>
-        <div class="summary">One real, separate group. Not junk.</div>
+        <div class="summary">Platelet contamination: a real, separate group, not junk.</div>
       </div>
       <div class="qa">
         <div class="qq">Merge?<span class="verdict-word">No</span></div>
@@ -373,7 +373,7 @@ table.mini th { font: 500 11px/1.2 var(--mono); color: var(--muted); text-transf
     <div class="cl c7">
       <div class="cl-head">
         <span class="tag c7">CLUSTER 7</span>
-        <div class="summary">An 8-cell core plus 2 loosely attached cells.</div>
+        <div class="summary">Probably cycling cells: an 8-cell core plus 2 loosely attached cells.</div>
       </div>
       <div class="qa">
         <div class="qq">Split?<span class="verdict-word">Not into two clusters</span></div>
@@ -403,19 +403,19 @@ table.mini th { font: 500 11px/1.2 var(--mono); color: var(--muted); text-transf
   <div class="verdicts">
     <div class="verdict c6">
       <div class="row"><span class="tag c6">CLUSTER 6</span></div>
-      <div class="call">Don't delete. Keep it for review.</div>
-      <p>It is not blank: the cells differ from each other, one cell has high depth, and the top markers <span class="gene">PPBP</span>/<span class="gene">PF4</span> match the owner's own platelet-contamination clue. What the cells are is still unresolved.</p>
+      <div class="call">Platelet contamination, not dead or empty cells.</div>
+      <p>All 13 cells express <span class="gene">PPBP</span> and <span class="gene">PF4</span>, the owner's own platelet-contamination clue, and mito is low. Deleting it as dead or empty junk would be wrong; removing it as platelet contamination is the owner's call.</p>
     </div>
     <div class="verdict c7">
       <div class="row"><span class="tag c7">CLUSTER 7</span></div>
       <div class="call">No. Don't prioritise the next run.</div>
-      <p>Its depth is high, but the T, B, NK and monocyte programmes overlap in the same cells, and the top markers are generic. This fits the owner's definition of “mixed or uninformative”.</p>
+      <p>The cluster most likely holds cycling (dividing) cells: its top markers include <span class="gene">STMN1</span>, <span class="gene">PCNA</span>, <span class="gene">TYMS</span> and <span class="gene">PTTG1</span>. That is not one of the T, B, NK or monocyte identities the owner asked for, and those programmes overlap in the same cells.</p>
     </div>
   </div>
 
   <div class="limit">
     <div class="lbl">Limits</div>
-    <p>Both answers rest on <b>10 and 13 cells</b>. Cluster 7 is the least stable cluster (some cells stay with it in only 21% of runs), and my doublet flag is a screening rule, not a validated classifier. So this is enough evidence to <i>hold back</i> a decision, but not enough to name either cluster's identity. Read-level quality (base quality, mapping rate, saturation) was never checked: only the processed file was supplied, with no raw reads or run report. The facility's cell filtering before delivery is also undocumented, so the cells it removed, and the thresholds it used, are unknown.</p>
+    <p>Both answers rest on <b>10 and 13 cells</b>, and both identities are best readings, not proof. Platelet contamination rests on the owner's own <span class="gene">PPBP</span>/<span class="gene">PF4</span> clue. “Cycling” comes from the model's general biology knowledge, not from the transcript or the data, and cluster 7 could also be doublets: it is the least stable cluster (some cells stay with it in only 21% of runs), and the doublet flag is a screening rule, not a validated classifier. Read-level quality (base quality, mapping rate, saturation) was never checked: only the processed file was supplied, with no raw reads or run report. The facility's cell filtering before delivery is also undocumented, so the cells it removed, and the thresholds it used, are unknown.</p>
   </div>
 
   <div class="ai">
